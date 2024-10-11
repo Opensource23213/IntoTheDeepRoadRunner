@@ -13,6 +13,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.drive.AsyncFollowingFSM;
 import org.firstinspires.ftc.teamcode.drive.PoseStorage;
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
+import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
 
 /**
  * FFTCOpenSourceAutonomouss Example for only vision detection using tensorflow and park
@@ -37,7 +38,7 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
 
     // Define our start pose
     // This assumes we start at x: 15, y: 10, heading: 180 degrees
-    Pose2d startPose = new Pose2d(15, 10, Math.toRadians(180));
+    Pose2d startPose = new Pose2d(-3.5, 62.5, Math.toRadians(-90));
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -52,13 +53,15 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
 
         // Let's define our trajectories
         Trajectory trajectory1 = drive.trajectoryBuilder(startPose)
-                .splineTo(new Vector2d(45, -20), Math.toRadians(90))
+                .lineToLinearHeading(new Pose2d(-3.5, 32.5, Math.toRadians(-90)))
                 .build();
 
         // Second trajectory
         // Ensure that we call trajectory1.end() as the start for this one
-        Trajectory trajectory2 = drive.trajectoryBuilder(trajectory1.end())
-                .lineTo(new Vector2d(45, 0))
+        TrajectorySequence trajectory2 = drive.trajectorySequenceBuilder(trajectory1.end())
+                .splineToSplineHeading(new Pose2d(-3.5, 40, Math.toRadians(-90)), Math.toRadians(90))
+                .splineToSplineHeading(new Pose2d(-20, 50, Math.toRadians(90)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-36, 61, Math.toRadians(90)), Math.toRadians(90))
                 .build();
 
         // Define the angle to turn at
@@ -106,7 +109,7 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
                     // Make sure we use the async follow function
                     if (!drive.isBusy()) {
                         currentState = AsyncFollowingFSM.State.TRAJECTORY_2;
-                        drive.followTrajectoryAsync(trajectory2);
+                        drive.followTrajectorySequenceAsync(trajectory2);
                     }
                     break;
                 case TRAJECTORY_2:

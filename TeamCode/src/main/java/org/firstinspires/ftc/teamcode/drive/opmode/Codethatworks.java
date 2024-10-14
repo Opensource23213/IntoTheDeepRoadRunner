@@ -7,6 +7,7 @@ import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.hardware.rev.RevTouchSensor;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -81,8 +82,7 @@ public class Codethatworks extends OpMode {
     public DcMotor front_right = null;
     public DcMotor rear_right = null;
     public double apress = 1;
-    public DigitalChannel limitfront1;
-    public DigitalChannel limitfront2;
+    public RevTouchSensor limitfront;
     public DigitalChannel limitwrist1;
     public DigitalChannel limitwrist2;
     public double r1press = 1;
@@ -111,8 +111,7 @@ public class Codethatworks extends OpMode {
         rear_right = hardwareMap.get(DcMotor.class, "rear_right");
         limitwrist1 = hardwareMap.get(DigitalChannel.class, "limitwrist1");
         limitwrist2 = hardwareMap.get(DigitalChannel.class, "limitwrist2");
-        limitfront1 = hardwareMap.get(DigitalChannel.class, "limitfront1");
-        limitfront2 = hardwareMap.get(DigitalChannel.class, "limitfront2");
+        limitfront = hardwareMap.get(RevTouchSensor.class, "limitfront");
         wristy.setPosition(.4);
         twisty.setPosition(.5);
         gripspinny.setPower(0);
@@ -450,7 +449,7 @@ public class Codethatworks extends OpMode {
 
             }
             else if(lastbutton == "l1"){
-                if(nowbutton == "l1" || !limitfront1.getState() && !limitfront2.getState()) {
+                if(nowbutton == "l1" || !limitfront.isPressed()) {
                     //Arm drops block on the hang and goes back in
                     wristy.setPosition(0);
                     wristpose = 0;

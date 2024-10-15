@@ -67,12 +67,12 @@ public class Codethatworks extends OpMode {
     double armbasket = 2000;
     double twistbasket = .5;
     double wristbasket = .6;
-    double slidespecimen = 0;
+    double slidespecimen = .5;
     double armspecimen = 1408;
-    double wristspecimen = .18;
+    double wristspecimen = .3;
     double twistspecimen = .5;
     double armspecimenpickup = 0;
-    double wristspecimenpickup = .39;
+    double wristspecimenpickup = .51;
     double xpress = 1;
     public Button buttons = null;
     public double start = 0;
@@ -85,9 +85,14 @@ public class Codethatworks extends OpMode {
     public RevTouchSensor limitfront;
     public DigitalChannel limitwrist1;
     public DigitalChannel limitwrist2;
+    public DigitalChannel limitarm;
     public double r1press = 1;
     public double armPose = 0;
     double slidesPose = 0;
+    double armreset = 1;
+    double offset = 0;
+    double newpos = -312;
+    double ypress = 1;
     RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
     RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
 
@@ -111,8 +116,9 @@ public class Codethatworks extends OpMode {
         rear_right = hardwareMap.get(DcMotor.class, "rear_right");
         limitwrist1 = hardwareMap.get(DigitalChannel.class, "limitwrist1");
         limitwrist2 = hardwareMap.get(DigitalChannel.class, "limitwrist2");
+        limitarm = hardwareMap.get(DigitalChannel.class, "limitarm");
         limitfront = hardwareMap.get(RevTouchSensor.class, "limitfront");
-        wristy.setPosition(.4);
+        wristy.setPosition(.5);
         twisty.setPosition(.5);
         gripspinny.setPower(0);
         slides.setDirection(DcMotor.Direction.REVERSE);
@@ -138,7 +144,7 @@ public class Codethatworks extends OpMode {
         slidestarget = 0;
 
     }
-    double wristpose = .4;
+    double wristpose = .5;
     double twistpose = .5;
     @Override
     public void loop() {
@@ -149,6 +155,7 @@ public class Codethatworks extends OpMode {
         drive();
         extra_in();
         basket();
+        dropoff();
     }
     public void drive(){
         YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
@@ -184,8 +191,6 @@ public class Codethatworks extends OpMode {
             imu.initialize(new IMU.Parameters(orientationOnRobot));
             imu.resetDeviceConfigurationForOpMode();
             imu.resetYaw();
-        } else {
-            telemetry.addData("Yaw", "Press Middle Button (Logic) on Gamepad to reset\n");
         }
 
         //elbow1.setPosition(servo1pose);
@@ -229,55 +234,65 @@ public class Codethatworks extends OpMode {
     }
 
     public void arm(){
-        toplimit = 1406;
-        controller.setPID(p, i, d);
-        slidesPose = -slides.getCurrentPosition() * 2;
-        armd = -slides.getCurrentPosition()/slideticks * .03 / 19.6;
-        armf = .001 + -slides.getCurrentPosition()/slideticks * .2 / 19.6;
-        double pid = controller.calculate(slidesPose, slidestarget);
-        double ff = Math.cos(Math.toRadians(slidestarget)) * f;
-        double power = pid + ff;
-        if(-250 < slidesPose - slidestarget && slidesPose - slidestarget < 250 && (gamepad2.right_stick_y > .1 || gamepad2.right_stick_y < -.1)){
-            double otherPose = -slides.getCurrentPosition() / slideticks;
-            if (otherPose < bottomlimit && gamepad2.right_stick_y > 0){
-                slides.setPower(0);
-                slidestarget = (int) (-slides.getCurrentPosition() * 2);
-            }else if(otherPose > toplimit && gamepad2.right_stick_y < 0){
-                slides.setPower(0);
-                slidestarget = (int) (-slides.getCurrentPosition() * 2);
-            }else{
-                slides.setPower(gamepad2.right_stick_y/2);
-                slidestarget = (int) (-slides.getCurrentPosition() * 2);
+        if(armreset == 1) {
+            toplimit = 1406;
+            controller.setPID(p, i, d);
+            slidesPose = -slides.getCurrentPosition() * 2;
+            armd = -slides.getCurrentPosition() / slideticks * .03 / 19.6;
+            armf = .001 + -slides.getCurrentPosition() / slideticks * .2 / 19.6;
+            double pid = controller.calculate(slidesPose, slidestarget);
+            double ff = Math.cos(Math.toRadians(slidestarget)) * f;
+            double power = pid + ff;
+            if (-250 < slidesPose - slidestarget && slidesPose - slidestarget < 250 && (gamepad2.right_stick_y > .1 || gamepad2.right_stick_y < -.1)) {
+                double otherPose = -slides.getCurrentPosition() / slideticks;
+                if (otherPose < bottomlimit && gamepad2.right_stick_y > 0) {
+                    slides.setPower(0);
+                    slidestarget = (int) (-slides.getCurrentPosition() * 2);
+                } else if (otherPose > toplimit && gamepad2.right_stick_y < 0) {
+                    slides.setPower(0);
+                    slidestarget = (int) (-slides.getCurrentPosition() * 2);
+                } else {
+                    slides.setPower(gamepad2.right_stick_y / 2);
+                    slidestarget = (int) (-slides.getCurrentPosition() * 2);
+                }
+            } else {
+                slides.setPower(-power);
             }
-        }else {
-            slides.setPower(-power);
-        }
-        armcontroller.setPID(armp, armi, armd);
-        armPose = ArmPos.getCurrentPosition();
-        double armpid = controller.calculate(armPose, armtarget);
-        double armff = Math.cos(Math.toRadians(armtarget)) * armf;
-        double armpower = armpid + armff;
-        if(-200 < armPose - armtarget && armPose - armtarget < 200 && (gamepad2.left_stick_y > .1 || gamepad2.left_stick_y < -.1)){
-            Arm1.setPower(gamepad2.left_stick_y/2);
-            Arm2.setPower(gamepad2.left_stick_y/2);
-            armtarget = (int) (ArmPos.getCurrentPosition());
-        }else {
-            Arm1.setPower(-armpower);
-            Arm2.setPower(-armpower);
-        }
+            armcontroller.setPID(armp, armi, armd);
+            armPose = ArmPos.getCurrentPosition() + offset;
+            double armpid = controller.calculate(armPose, armtarget);
+            double armff = Math.cos(Math.toRadians(armtarget)) * armf;
+            double armpower = armpid + armff;
+            if (-200 < armPose - armtarget && armPose - armtarget < 200 && (gamepad2.left_stick_y > .1 || gamepad2.left_stick_y < -.1)) {
+                if (armPose < newpos + 45 && gamepad2.left_stick_y > 0) {
+                    Arm1.setPower(0);
+                    Arm2.setPower(0);
+                    armtarget = (int) (ArmPos.getCurrentPosition() + offset);
+                } else {
+                    Arm1.setPower(gamepad2.left_stick_y / 2);
+                    Arm2.setPower(gamepad2.left_stick_y / 2);
+                    armtarget = (int) (ArmPos.getCurrentPosition() + offset);
+                }
+            } else {
+                Arm1.setPower(-armpower);
+                Arm2.setPower(-armpower);
+            }
 
-        telemetry.addData("pose", armPose);
-        telemetry.addData("target", armtarget);
-        telemetry.addData("power", -armpower);
-        telemetry.addData("pose", slidesPose - slidestarget);
-        telemetry.addData("pose", slidesPose);
-        telemetry.addData("target", slidestarget);
-        telemetry.addData("power", -power);
-        //telemetry.addData("state", !limitwrist2.getState());
-        telemetry.update();
+            telemetry.addData("pose", armPose);
+            telemetry.addData("target", armtarget);
+            telemetry.addData("power", -armpower);
+            telemetry.addData("pose", slidesPose - slidestarget);
+            telemetry.addData("pose", slidesPose);
+            telemetry.addData("target", slidestarget);
+            telemetry.addData("power", -power);
+            telemetry.addData("state", !limitarm.getState());
+            telemetry.update();
 
-        wristy.setPosition(wristpose);
-        twisty.setPosition(twistpose);
+            wristy.setPosition(wristpose);
+            twisty.setPosition(twistpose);
+        }else{
+            reset();
+        }
 
     }
     public class Button{
@@ -330,8 +345,19 @@ public class Codethatworks extends OpMode {
         }
         public void ButtonControl(){
             if(nowbutton == "ps"){
-                ArmPos.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                armreset = 2;
                 armtarget = 0;
+                lastbutton = "";
+                nowbutton = "";
+            }
+            if(nowbutton == "r2"){
+                armtarget = 0;
+                slidestarget = 0;
+                twistpose = .5;
+                wristpose = 0;
+                gripspinny.setPower(0);
+                lastbutton = "";
+                nowbutton = "";
             }
             if(lastbutton == ""){
                 if(nowbutton == "a"){
@@ -345,12 +371,8 @@ public class Codethatworks extends OpMode {
                     nowbutton = "";
                 }
                 if(nowbutton == "b"){
-                    //Arm goes out
-                    if(gripspinny.getPower() > 0){
-                        gripspinny.setPower(0);
-                    }else {
-                        gripspinny.setPower(1);
-                    }
+                    //Spit out
+                    ypress = 1.5;
                     lastbutton = "";
                     nowbutton = "";
                 }
@@ -398,7 +420,7 @@ public class Codethatworks extends OpMode {
             else if(lastbutton == "a"){
                 if(!limitwrist1.getState() || !limitwrist2.getState() || nowbutton == "a"){
                     //brings arm back
-                    wristpose = .4;
+                    wristpose = .5;
                     twistpose = .5;
                     apress = 2;
                     slidestarget = 0;
@@ -406,14 +428,14 @@ public class Codethatworks extends OpMode {
                     nowbutton = "";
                     lastbutton = "";
                 }
-                if(nowbutton == "r1"){
+                if(nowbutton == "x"){
                     armtarget =  (int) (slidesPose * .1066 - 225 );
                     nowbutton = "";
                 }
                 if(nowbutton == "up"){
                     //wrist tilts up
-                    if(wristpose < .4){
-                        wristpose += .4;
+                    if(wristpose < .5){
+                        wristpose += .5;
                     }
                     nowbutton = "";
                 }
@@ -434,7 +456,7 @@ public class Codethatworks extends OpMode {
                 else if(nowbutton == "down"){
                     //wrist tilts down
                     if(wristpose > 0){
-                        wristpose -= .4;
+                        wristpose -= .5;
                     }
                     if(wristpose == 0){
                         gripspinny.setPower(-1);
@@ -449,10 +471,19 @@ public class Codethatworks extends OpMode {
 
             }
             else if(lastbutton == "l1"){
-                if(nowbutton == "l1" || !limitfront.isPressed()) {
+                if(nowbutton == "l1" /*|| limitfront.isPressed()*/) {
                     //Arm drops block on the hang and goes back in
                     wristy.setPosition(0);
                     wristpose = 0;
+                    gripspinny.setPower(-1);
+                    xpress = 1.5;
+                    lastbutton = "";
+                    nowbutton = "";
+
+                }
+                else if(nowbutton == "r1" || limitfront.isPressed() ) {
+                    //Arm drops block on the hang and goes back in
+                    armtarget = 1076;
                     gripspinny.setPower(-1);
                     xpress = 1.5;
                     lastbutton = "";
@@ -556,6 +587,29 @@ public class Codethatworks extends OpMode {
         }else if(apress == 3){
             gripspinny.setPower(0);
             apress = 1;
+        }
+    }
+    public void reset(){
+        if(limitarm.getState()) {
+            Arm1.setPower(.1);
+            Arm2.setPower(.1);
+            wristy.setPosition(.5);
+        }else{
+            ArmPos.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            Arm1.setPower(0);
+            Arm2.setPower(0);
+            offset = newpos;
+            armreset = 1;
+        }
+    }
+    public void dropoff(){
+        if(ypress == 1.5){
+            runtime = new ElapsedTime();
+            gripspinny.setPower(1);
+            ypress = 2;
+        }else if(ypress == 2 && runtime.time(TimeUnit.MILLISECONDS) > 500){
+            gripspinny.setPower(0);
+            ypress = 1;
         }
     }
 }

@@ -75,12 +75,12 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
     double armbasket = 2000;
     double twistbasket = .5;
     double wristbasket = .6;
-    double slidespecimen = 0;
+    double slidespecimen = .5;
     double armspecimen = 1408;
-    double wristspecimen = .18;
+    double wristspecimen = .3;
     double twistspecimen = .5;
     double armspecimenpickup = 0;
-    double wristspecimenpickup = .39;
+    double wristspecimenpickup = .51;
     double xpress = 1;
     public Codethatworks.Button buttons = null;
     public double start = 0;
@@ -93,6 +93,7 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
     public RevTouchSensor limitfront;
     public DigitalChannel limitwrist1;
     public DigitalChannel limitwrist2;
+    public DigitalChannel limitarm;
     public double r1press = 1;
     public double armPose = 0;
     double slidesPose = 0;
@@ -100,7 +101,7 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
     RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
 
     RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
-    double wristpose = .4;
+    double wristpose = .5;
     double twistpose = .5;
     enum State {
         TRAJECTORY_1,   // First, follow a splineTo() trajectory
@@ -134,7 +135,8 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
 
         // Let's define our trajectories
         Trajectory trajectory1 = drive.trajectoryBuilder(startPose)
-                .lineToLinearHeading(new Pose2d(-3.5, 32.5, Math.toRadians(-90)))
+                //.lineToLinearHeading(new Pose2d(-3.5, 32.5, Math.toRadians(90)))
+                .forward(30)
                 .build();
 
         // Second trajectory
@@ -192,16 +194,18 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
                     // Once `isBusy() == false`, the trajectory follower signals that it is finished
                     // We move on to the next state
                     // Make sure we use the async follow function
-                    armtarget = (int) armspecimen;
-                    slidestarget = (int) (slidespecimen * slideticks * 2);
-                    wristpose = wristspecimen;
-                    twistpose = twistspecimen;
-                    if(!limitfront.isPressed()){
+
+                    if(limitfront.isPressed()){
                         wristy.setPosition(0);
                         wristpose = 0;
                         gripspinny.setPower(-1);
                         xpress = 1.5;
                         ready = true;
+                    }else{
+                        armtarget = (int) armspecimen;
+                        slidestarget = (int) (slidespecimen * slideticks * 2);
+                        wristpose = wristspecimen;
+                        twistpose = twistspecimen;
                     }
                     if (!drive.isBusy() && ready) {
                         currentState = AsyncFollowingFSM.State.TRAJECTORY_2;
@@ -291,7 +295,7 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
             // Print pose to telemetry
             telemetry.addData("x", poseEstimate.getX());
             telemetry.addData("y", poseEstimate.getY());
-            telemetry.addData("heading", poseEstimate.getHeading());
+            telemetry.addData("heading", Math.toDegrees(poseEstimate.getHeading()));
             telemetry.update();
         }
     }
@@ -341,10 +345,11 @@ public class FTCOpenSourceAutonomousNewSeason extends LinearOpMode {
         front_right = hardwareMap.get(DcMotor.class, "front_right");
         rear_left = hardwareMap.get(DcMotor.class, "rear_left");
         rear_right = hardwareMap.get(DcMotor.class, "rear_right");
+        limitarm = hardwareMap.get(DigitalChannel.class, "limitarm");
         limitwrist1 = hardwareMap.get(DigitalChannel.class, "limitwrist1");
         limitwrist2 = hardwareMap.get(DigitalChannel.class, "limitwrist2");
         limitfront = hardwareMap.get(RevTouchSensor.class, "limitfront");
-        wristy.setPosition(.4);
+        wristy.setPosition(.5);
         twisty.setPosition(.5);
         gripspinny.setPower(0);
         slides.setDirection(DcMotor.Direction.REVERSE);

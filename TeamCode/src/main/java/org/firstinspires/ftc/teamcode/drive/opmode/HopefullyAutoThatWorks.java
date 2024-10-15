@@ -35,7 +35,7 @@ import java.util.List;
  */
 
 @Autonomous(name = "FTCOpenSourceAutonomousBuc", group = "00-Autonomous", preselectTeleOp = "BucDays")
-public class FTCOpenSourceAutonomousBuc extends LinearOpMode {
+public class HopefullyAutoThatWorks extends LinearOpMode {
 
     public static String TEAM_NAME = "Open Source Robotics";
     public static int TEAM_NUMBER = 23213;

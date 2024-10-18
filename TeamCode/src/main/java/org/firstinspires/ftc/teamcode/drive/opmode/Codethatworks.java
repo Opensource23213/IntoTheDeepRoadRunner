@@ -56,6 +56,7 @@ public class Codethatworks extends OpMode {
     private CRServo gripspinny = null;
 
     double mode = 1;
+    double county = 2;
     public double basketmove =1;
     double slideratio = 2;
     double slideticks = 103.8 * slideratio / 4.75;
@@ -63,15 +64,15 @@ public class Codethatworks extends OpMode {
     double toplimit = 18.6;
 
     double bottomlimit = .25;
-    double slidebasket = 1600 ;
-    double armbasket = 2000;
+    double slidebasket = 1800 ;
+    double armbasket = 1857;
     double twistbasket = .5;
-    double wristbasket = .6;
+    double wristbasket = .2;
     double slidespecimen = .5;
     double armspecimen = 1408;
     double wristspecimen = .3;
     double twistspecimen = .5;
-    double armspecimenpickup = 0;
+    double armspecimenpickup = 20;
     double wristspecimenpickup = .51;
     double xpress = 1;
     public Button buttons = null;
@@ -82,6 +83,7 @@ public class Codethatworks extends OpMode {
     public DcMotor front_right = null;
     public DcMotor rear_right = null;
     public double apress = 1;
+    double rpress = 1;
     public RevTouchSensor limitfront;
     public DigitalChannel limitwrist1;
     public DigitalChannel limitwrist2;
@@ -93,6 +95,7 @@ public class Codethatworks extends OpMode {
     double offset = 0;
     double newpos = -312;
     double ypress = 1;
+    double check = 1;
     RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
     RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
 
@@ -156,6 +159,7 @@ public class Codethatworks extends OpMode {
         extra_in();
         basket();
         dropoff();
+        basketdrop();
     }
     public void drive(){
         YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
@@ -252,7 +256,7 @@ public class Codethatworks extends OpMode {
                     slides.setPower(0);
                     slidestarget = (int) (-slides.getCurrentPosition() * 2);
                 } else {
-                    slides.setPower(gamepad2.right_stick_y / 2);
+                    slides.setPower(gamepad2.right_stick_y *.75);
                     slidestarget = (int) (-slides.getCurrentPosition() * 2);
                 }
             } else {
@@ -263,7 +267,7 @@ public class Codethatworks extends OpMode {
             double armpid = controller.calculate(armPose, armtarget);
             double armff = Math.cos(Math.toRadians(armtarget)) * armf;
             double armpower = armpid + armff;
-            if (-200 < armPose - armtarget && armPose - armtarget < 200 && (gamepad2.left_stick_y > .1 || gamepad2.left_stick_y < -.1)) {
+            if (abs(abs(armPose) - abs(armtarget)) < 150 && (gamepad2.left_stick_y > .1 || gamepad2.left_stick_y < -.1)) {
                 if (armPose < newpos + 45 && gamepad2.left_stick_y > 0) {
                     Arm1.setPower(0);
                     Arm2.setPower(0);
@@ -339,6 +343,12 @@ public class Codethatworks extends OpMode {
                 }else if (gamepad2.ps){
                     button = "ps";
                 }
+                else if (gamepad2.left_stick_button){
+                    button = "l3";
+                }
+                else if (gamepad2.right_stick_button){
+                    button = "r3";
+                }
             }
             endbutton();
             ButtonControl();
@@ -347,6 +357,11 @@ public class Codethatworks extends OpMode {
             if(nowbutton == "ps"){
                 armreset = 2;
                 armtarget = 0;
+                lastbutton = "";
+                nowbutton = "";
+            }
+            if(nowbutton == "l2"){
+                apress = 2;
                 lastbutton = "";
                 nowbutton = "";
             }
@@ -360,10 +375,22 @@ public class Codethatworks extends OpMode {
                 nowbutton = "";
             }
             if(lastbutton == ""){
+                if(nowbutton == "l3"){
+                    armtarget = (int) (97 * armticks);
+                    wristpose = .5;
+                    lastbutton = "l3";
+                    nowbutton = "";
+                }
+                if(nowbutton == "r3"){
+                    armtarget = (int) armbasket;
+                    wristpose = wristbasket;
+                    lastbutton = "r3";
+                    nowbutton = "";
+                }
                 if(nowbutton == "a"){
                     //Arm goes out
                     armtarget = (int) (0 * armticks);
-                    slidestarget = 0;
+                    slidestarget = (int) (3 * slideticks * 2);
                     wristpose = 0;
                     twistpose = .5;
                     gripspinny.setPower(-1);
@@ -417,14 +444,22 @@ public class Codethatworks extends OpMode {
 
                 }
             }
+            else if(lastbutton == "r3"){
+                if(nowbutton == "r3") {
+                    slidestarget = (int) slidebasket;
+                    basketmove = 2;
+                    lastbutton = "";
+                    nowbutton = "";
+                }
+            }
             else if(lastbutton == "a"){
-                if(!limitwrist1.getState() || !limitwrist2.getState() || nowbutton == "a"){
+                if(nowbutton == "a" || !limitwrist1.getState() || !limitwrist2.getState()){
                     //brings arm back
                     wristpose = .5;
                     twistpose = .5;
                     apress = 2;
+                    armtarget = 0;
                     slidestarget = 0;
-                    armtarget = (int) (0 * armticks);
                     nowbutton = "";
                     lastbutton = "";
                 }
@@ -470,8 +505,15 @@ public class Codethatworks extends OpMode {
                 }
 
             }
+            else if(lastbutton == "l3"){
+                if(nowbutton == "l3"){
+                    armtarget = -250;
+                    lastbutton = "";
+                    nowbutton = "";
+                }
+            }
             else if(lastbutton == "l1"){
-                if(nowbutton == "l1" /*|| limitfront.isPressed()*/) {
+                /*if(nowbutton == "l1" || limitfront.isPressed()) {
                     //Arm drops block on the hang and goes back in
                     wristy.setPosition(0);
                     wristpose = 0;
@@ -480,8 +522,8 @@ public class Codethatworks extends OpMode {
                     lastbutton = "";
                     nowbutton = "";
 
-                }
-                else if(nowbutton == "r1" || limitfront.isPressed() ) {
+                }*/
+                if(nowbutton == "l1" || limitfront.isPressed() ) {
                     //Arm drops block on the hang and goes back in
                     armtarget = 1076;
                     gripspinny.setPower(-1);
@@ -546,6 +588,14 @@ public class Codethatworks extends OpMode {
                 nowbutton = "ps";
                 button = "";
             }
+            else if (!gamepad2.left_stick_button && button == "l3"){
+                nowbutton = "l3";
+                button = "";
+            }
+            else if (!gamepad2.right_stick_button && button == "r3"){
+                nowbutton = "r3";
+                button = "";
+            }
         }
     }
     public void extra_in(){
@@ -571,11 +621,12 @@ public class Codethatworks extends OpMode {
         }
     }
     public void basket(){
-        if(basketmove == 2 && abs(armPose - armtarget) < 100){
-            slidestarget = (int) slidebasket;
+        if(basketmove == 2 && abs(slidesPose - slidestarget) < 100){
+            rpress = 1.5;
             basketmove = 1;
         }
     }
+
     public void spit(){
         if(apress == 2){
             runtime = new ElapsedTime();
@@ -611,6 +662,21 @@ public class Codethatworks extends OpMode {
             gripspinny.setPower(0);
             ypress = 1;
         }
+
+    }
+    public void basketdrop(){
+        if(rpress == 1.5){
+            runtime = new ElapsedTime();
+            gripspinny.setPower(.25);
+            rpress = 2;
+        }else if(rpress == 2 && runtime.time(TimeUnit.MILLISECONDS) > 500){
+            gripspinny.setPower(0);
+            rpress = 3;
+        }else if(rpress == 3){
+            slidestarget = 0;
+            rpress = 1;
+        }
+
     }
 }
 

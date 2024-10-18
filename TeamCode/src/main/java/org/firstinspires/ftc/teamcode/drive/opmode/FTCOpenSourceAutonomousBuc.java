@@ -9,6 +9,7 @@ import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -33,7 +34,7 @@ import java.util.List;
 /**
  * FFTCOpenSourceAutonomouss Example for only vision detection using tensorflow and park
  */
-
+@Disabled
 @Autonomous(name = "FTCOpenSourceAutonomousBuc", group = "00-Autonomous", preselectTeleOp = "BucDays")
 public class FTCOpenSourceAutonomousBuc extends LinearOpMode {
 
@@ -48,23 +49,23 @@ public class FTCOpenSourceAutonomousBuc extends LinearOpMode {
     private CRServo spinny;
 
     public SampleMecanumDrive drive;
-    private DcMotor Arm1 = null;
-    private DcMotor Arm2 = null;
+    private DcMotor Arm1;
+    private DcMotor Arm2;
     private Servo elbow1;
     private Servo wristy;
     IMU imu;
     private Servo grabby;
     private Servo flippy;
-    private DcMotor ArmPos = null;
+    private DcMotor ArmPos;
     private Servo mustaches;
     private Servo ilifty;
     private DistanceSensor sensorDistance;
     private DistanceSensor sensorDistance2;
     private DistanceSensor flippydis;
-    private DcMotor front_left = null;
-    private DcMotor front_right = null;
-    private DcMotor rear_left = null;
-    private DcMotor rear_right = null;
+    private DcMotor front_left;
+    private DcMotor front_right;
+    private DcMotor rear_left;
+    private DcMotor rear_right;
     int use_tfod = 1;
     int use_apriltag = 2;
     private static final boolean USE_WEBCAM = true;  // true for webcam, false for phone camera

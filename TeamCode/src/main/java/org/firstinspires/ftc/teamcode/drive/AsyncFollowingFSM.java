@@ -36,8 +36,12 @@ public class AsyncFollowingFSM extends LinearOpMode {
         TRAJECTORY_2,   // Then, follow a lineTo() trajectory
         TURN_1,         // Then we want to do a point turn
         TRAJECTORY_3,   // Then, we follow another lineTo() trajectory
-        WAIT_1,         // Then we're gonna wait a second
-        TURN_2,         // Finally, we're gonna turn again
+        TRAJECTORY_4,         // Then we're gonna wait a second
+        TRAJECTORY_5,         // Finally, we're gonna turn again
+        TRAJECTORY_6,
+        TRAJECTORY_7,
+        TURN_2,
+        WAIT_1,
         IDLE            // Our bot will enter the IDLE state when done
     }
 

@@ -7,14 +7,13 @@ import static java.lang.Math.abs;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
-import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.hardware.rev.RevTouchSensor;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -27,16 +26,15 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.drive.AsyncFollowingFSM;
 import org.firstinspires.ftc.teamcode.drive.PoseStorage;
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
-import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
 
 import java.util.concurrent.TimeUnit;
 
 /**
  * FFTCOpenSourceAutonomouss Example for only vision detection using tensorflow and park
  */
-@Disabled
-@Autonomous(name = "AllBlues", group = "00-Autonomous", preselectTeleOp = "Codethatworks")
-public class AllBluesAuto extends LinearOpMode {
+
+@Autonomous(name = "Basket", group = "00-Autonomous", preselectTeleOp = "Codethatworks")
+public class BasketAuto extends LinearOpMode {
     private PIDController controller;
     private PIDController armcontroller;
 
@@ -59,7 +57,7 @@ public class AllBluesAuto extends LinearOpMode {
     private DcMotor slides = null;
     private DcMotor Arm1 = null;
     private DcMotor Arm2 = null;
-    private DcMotor ArmPos = null;
+    private AnalogInput ArmPos = null;
     private Servo wristy = null;
     private Servo twisty = null;
     private CRServo gripspinny = null;
@@ -72,16 +70,17 @@ public class AllBluesAuto extends LinearOpMode {
     double toplimit = 18.6;
 
     double bottomlimit = .25;
-    double slidebasket = 1600 ;
-    double armbasket = 2000;
+    double slidebasket = 1700 ;
+    double armbasket = 88 * armticks;
     double twistbasket = .5;
-    double wristbasket = .6;
+    double wristbasket = .92;
     double slidespecimen = .5;
-    double armspecimen = 1408;
+    double armspecimen = 1380 ;
     double wristspecimen = .3;
     double twistspecimen = .5;
-    double armspecimenpickup = 20;
+    double armspecimenpickup = 60;
     double wristspecimenpickup = .51;
+    double ticks = .002866;
     double xpress = 1;
     public double start = 0;
     public IMU imu = null;
@@ -92,9 +91,10 @@ public class AllBluesAuto extends LinearOpMode {
     public double apress = 1;
     double just = 0;
     public RevTouchSensor limitfront;
+    public RevTouchSensor limitfront2;
     public DigitalChannel limitwrist1;
     public DigitalChannel limitwrist2;
-    public DigitalChannel limitarm;
+    public DigitalChannel limitwrist3;
     public double r1press = 1;
     public double armPose = 0;
     double slidesPose = 0;
@@ -121,10 +121,11 @@ public class AllBluesAuto extends LinearOpMode {
     AsyncFollowingFSM.State currentState = AsyncFollowingFSM.State.IDLE;
     double front = 0;
     double scored = 1;
+    double yes = 1;
 
     // Define our start pose
     // This assumes we start at x: 15, y: 10, heading: 180 degrees
-    Pose2d startPose = new Pose2d(-3.5, 62.5, Math.toRadians(-90));
+    Pose2d startPose = new Pose2d(39, 63,Math.toRadians(180));
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -140,63 +141,51 @@ public class AllBluesAuto extends LinearOpMode {
 
         // Let's define our trajectories
         Trajectory trajectory1 = drive.trajectoryBuilder(startPose)
-                .lineToLinearHeading(new Pose2d(-3.5, 31, Math.toRadians(-90)))
+                .lineToLinearHeading(new Pose2d(57, 57, Math.toRadians(-135)))
                 .build();
 
 
         // Second trajectory
         // Ensure that we call trajectory1.end() as the start for this one
-        TrajectorySequence trajectory2 = drive.trajectorySequenceBuilder(trajectory1.end())
-                .splineToSplineHeading(new Pose2d(-3.5, 39, Math.toRadians(-90)), Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-37, 61, Math.toRadians(90)), Math.toRadians(90))
-                .build();
 
         // Define the angle to turn at
         double turnAngle1 = Math.toRadians(-270);
+        Trajectory trajectory2 = drive.trajectoryBuilder(trajectory1.end())
+                .lineToLinearHeading(new Pose2d(58.5, 40, Math.toRadians(-90)))
+                .build();
+        Trajectory trajectory3 = drive.trajectoryBuilder(trajectory2.end())
+                .lineToLinearHeading(new Pose2d(57, 57, Math.toRadians(-135)))
+                .build();
+        Trajectory trajectory4 = drive.trajectoryBuilder(trajectory3.end())
+                .lineToLinearHeading(new Pose2d(48.5, 40, Math.toRadians(-90)))
+                .build();
+        Trajectory trajectory5 = drive.trajectoryBuilder(trajectory4.end())
+                .lineToLinearHeading(new Pose2d(57, 57, Math.toRadians(-135)))
+                .build();
+        Trajectory trajectory6 = drive.trajectoryBuilder(trajectory5.end())
+                .lineToLinearHeading(new Pose2d(56, 27, Math.toRadians(0)))
+                .build();
+        Trajectory trajectory7 = drive.trajectoryBuilder(trajectory6.end())
+                .lineToLinearHeading(new Pose2d(57, 57, Math.toRadians(-135)))
+                .build();
 
-        // Third trajectory
-        // We have to define a new end pose because we can't just call trajectory2.end()
-        // Since there was a point turn before that
-        // So we just take the pose from trajectory2.end(), add the previous turn angle to it
-        TrajectorySequence trajectory3 = drive.trajectorySequenceBuilder(trajectory2.end())
-                .splineToConstantHeading(new Vector2d(-35.5, 61), Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(3, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(3, 29.5), Math.toRadians(-90))
-                .build();
-        TrajectorySequence trajectory4 = drive.trajectorySequenceBuilder(trajectory3.end())
-                .splineToSplineHeading(new Pose2d(3, 39, Math.toRadians(-90)), Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-36.2, 61, Math.toRadians(90)), Math.toRadians(90))
-                .build();
-        TrajectorySequence trajectory5 = drive.trajectorySequenceBuilder(trajectory4.end())
-                .splineToConstantHeading(new Vector2d(-36.1, 61), Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(1, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(1, 29.5), Math.toRadians(-90))
-                .build();
-        TrajectorySequence trajectory6 = drive.trajectorySequenceBuilder(trajectory5.end())
-                .lineToLinearHeading(new Pose2d(-37, 50,Math.toRadians(-90)))
-                .lineToLinearHeading(new Pose2d(-37, 12,Math.toRadians(-90)))
-                .lineToLinearHeading(new Pose2d(-49, 12,Math.toRadians(90)))
-                .lineToLinearHeading(new Pose2d(-49, 58,Math.toRadians(90)))
-                .lineToLinearHeading(new Pose2d(-35.5, 48,Math.toRadians(90)))
-                .build();
-        TrajectorySequence trajectory7 = drive.trajectorySequenceBuilder(trajectory6.end())
-                .splineToLinearHeading(new Pose2d(-35.5, 61, Math.toRadians(90)), Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-29, 61), Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(1, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(1, 23), Math.toRadians(-100))
-                .build();
+
+
         // Define a 1.5 second wait time
         double waitTime1 = 1.5;
+        double lasttraj = 0;
+        double lastjust = 0;
         ElapsedTime waitTimer1 = new ElapsedTime();
 
         // Define the angle for turn 2
         double turnAngle2 = Math.toRadians(720);
         boolean ready = false;
+        while(!opModeIsActive()){
+            arm();
+        }
         waitForStart();
 
-        if (isStopRequested()) return;
+
 
         // Set the current state to TRAJECTORY_1, our first step
         // Then have it follow that trajectory
@@ -217,214 +206,164 @@ public class AllBluesAuto extends LinearOpMode {
             // We essentially define the flow of the state machine through this switch statement
             switch (currentState) {
                 case TRAJECTORY_1:
-                    // Check if the drive class isn't busy
-                    // `isBusy() == true` while it's following the trajectory
-                    // Once `isBusy() == false`, the trajectory follower signals that it is finished
-                    // We move on to the next state
-                    // Make sure we use the async follow function
-                    if(limitfront.isPressed()){
-                        front = 1;
-                    }
-                    if(front == 1){
-                        armtarget = 1076;
-                        gripspinny.setPower(-1);
-                        if(armPose - armtarget < 200) {
-                            ready = true;
-                        }
-                    }else{
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                    }
-                    if (ready) {
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_2;
-                        drive.followTrajectorySequenceAsync(trajectory2);
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
+                    //arm goes back and scores
+                    armtarget = (int) armbasket;
+                    slidestarget = (int) slidebasket;
+                    wristpose = wristbasket;
+                    if(slidesPose > slidestarget - 100 && slidesPose < slidestarget + 100 && yes == 1) {
                         gripspinny.setPower(1);
+                        drivetime = new ElapsedTime();
+                        yes = 2;
+
+                    }
+                    if (drivetime.time(TimeUnit.MILLISECONDS) > 500 && yes == 2) {
+                        gripspinny.setPower(0);
+                        wristpose = 0;
+                        slidestarget = 800;
+                        armtarget = 0;
+                        just = 1;
+                        yes = 1;
+                        currentState = AsyncFollowingFSM.State.TRAJECTORY_2;
+                        drive.followTrajectoryAsync(trajectory2);
                     }
                     break;
                 case TRAJECTORY_2:
-                    // Check if the drive class is busy following the trajectory
-                    // Move on to the next state, TURN_1, once finished
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && drivetime.time(TimeUnit.MILLISECONDS) < 1000){
-                        armtarget = (int) armspecimenpickup;
-                        wristpose = wristspecimenpickup;
-                        twistpose = .5;
-                        gripspinny.setPower(-1);
+                    //picks and scores
+                    if(just == 1) {
+                        if (!drive.isBusy()) {
+                            slidestarget = (int) (6.25 * slideticks * 2);
+                            wristpose = 0;
+                            gripspinny.setPower(-1);
+                            if (slidesPose > slidestarget - 100 && slidesPose < slidestarget + 100) {
+                                armtarget = (int) (-13 * armticks);
+                            }
+                        }
+                        if (!limitwrist1.getState() || !limitwrist2.getState() || !limitwrist3.getState()) {
+                            armtarget = 0;
+                            slidestarget = 600;
+                            just = 2;
+                            drive.followTrajectoryAsync(trajectory3);
+                        }
                     }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && (!limitwrist1.getState() || !limitwrist2.getState())) {
-                        //raise arm to take off hook and bring arm in
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                        r1press = 2;
-                        ready = true;
-                    }
-                    if (!drive.isBusy() && ready) {
-                        offset += 2.5;
-                        ready = false;
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_3;
-                        drive.followTrajectorySequenceAsync(trajectory3);
-                        drivetime = new ElapsedTime();
+                    if(just == 2) {
+                        //arm goes back and scores
+                        armtarget = (int) armbasket;
+                        slidestarget = (int) slidebasket;
+                        wristpose = wristbasket;
+
+                        if(!drive.isBusy()) {
+                            if(slidesPose > slidestarget - 100 && slidesPose < slidestarget + 100 && yes == 1) {
+                                gripspinny.setPower(1);
+                                drivetime = new ElapsedTime();
+                                yes = 2;
+
+                            }
+                            if (drivetime.time(TimeUnit.MILLISECONDS) > 500 && yes == 2) {
+                                gripspinny.setPower(0);
+                                slidestarget = 800;
+                                armtarget = 0;
+                                just = 1;
+                                yes = 1;
+                                currentState = AsyncFollowingFSM.State.TRAJECTORY_2;
+                                drive.followTrajectoryAsync(trajectory2);
+                            }
+                        }
                     }
                     break;
                 case TRAJECTORY_3:
-                    // Check if the drive class isn't busy
-                    // `isBusy() == true` while it's following the trajectory
-                    // Once `isBusy() == false`, the trajectory follower signals that it is finished
-                    // We move on to the next state
-                    // Make sure we use the async follow function
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && limitfront.isPressed() && front == 0){
-                        front = 1;
-                        drivetime = new ElapsedTime();
-                    }
-                    if(front == 1){
-                        armtarget = 1076;
-                        gripspinny.setPower(-1);
-                        if(armPose - armtarget < 100) {
-                            ready = true;
+                    //picks and scores
+                    if(just == 1) {
+                        if (!drive.isBusy()) {
+                            slidestarget = (int) (7.25 * slideticks * 2);
+                            wristpose = 0;
+                            gripspinny.setPower(-1);
+                            if (slidesPose > slidestarget - 50 && slidesPose < slidestarget + 50) {
+                                armtarget = (int) (-12 * armticks);
+                            }
                         }
-                    }else{
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
+                        if (!limitwrist1.getState() || !limitwrist2.getState() || !limitwrist3.getState()) {
+                            slidestarget = 600;
+                            just = 2;
+                            drive.followTrajectoryAsync(trajectory5);
+                        }
                     }
-                    if (ready) {
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_4;
-                        drive.followTrajectorySequenceAsync(trajectory4);
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        gripspinny.setPower(1);
+                    if(just == 2) {
+                        //arm goes back and scores
+                        armtarget = (int) armbasket;
+                        slidestarget = (int) slidebasket;
+                        wristpose = wristbasket;
+
+                        if(!drive.isBusy()) {
+                            if(slidesPose > slidestarget - 100 && slidesPose < slidestarget + 100 && yes == 1) {
+                                gripspinny.setPower(1);
+                                drivetime = new ElapsedTime();
+                                yes = 2;
+
+                            }
+                            if (drivetime.time(TimeUnit.MILLISECONDS) > 500 && yes == 2) {
+                                gripspinny.setPower(0);
+                                slidestarget = 800;
+                                armtarget = 0;
+                                just = 1;
+                                yes = 1;
+                                currentState = AsyncFollowingFSM.State.TRAJECTORY_2;
+                                drive.followTrajectoryAsync(trajectory2);
+                            }
+                        }
                     }
                     break;
                 case TRAJECTORY_4:
-                    // Check if the drive class is busy following the trajectory
-                    // Move on to the next state, TURN_1, once finished
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && drivetime.time(TimeUnit.MILLISECONDS) < 1000){
-                        armtarget = (int) armspecimenpickup;
-                        wristpose = wristspecimenpickup;
-                        twistpose = .5;
-                        gripspinny.setPower(-1);
+                    //picks and scores
+                    if(just == 1) {
+                        if (!drive.isBusy()) {
+                            slidestarget = (int) (7.25 * slideticks * 2);
+                            wristpose = 0;
+                            gripspinny.setPower(-1);
+                            if (slidesPose > slidestarget - 50 && slidesPose < slidestarget + 50) {
+                                armtarget = (int) (-12 * armticks);
+                            }
+                        }
+                        if (!limitwrist1.getState() || !limitwrist2.getState() || !limitwrist3.getState()) {
+                            slidestarget = 600;
+                            just = 2;
+                            drive.followTrajectoryAsync(trajectory7);
+                        }
                     }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && (!limitwrist1.getState() || !limitwrist2.getState())) {
-                        //raise arm to take off hook and bring arm in
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                        r1press = 2;
-                        ready = true;
-                    }
-                    if (ready) {
-                        offset += 2.5;
-                        ready = false;
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_5;
-                        drive.followTrajectorySequenceAsync(trajectory5);
-                        drivetime = new ElapsedTime();
+                    if(just == 2) {
+                        //arm goes back and scores
+                        armtarget = (int) armbasket;
+                        slidestarget = (int) slidebasket;
+                        wristpose = wristbasket;
+
+                        if(!drive.isBusy()) {
+                            if(slidesPose > slidestarget - 100 && slidesPose < slidestarget + 100 && yes == 1) {
+                                gripspinny.setPower(1);
+                                drivetime = new ElapsedTime();
+                                yes = 2;
+
+                            }
+                            if (drivetime.time(TimeUnit.MILLISECONDS) > 500 && yes == 2) {
+                                gripspinny.setPower(0);
+                                slidestarget = 800;
+                                armtarget = 0;
+                                yes = 1;
+                                just = 1;
+                                currentState = AsyncFollowingFSM.State.TRAJECTORY_2;
+                                drive.followTrajectoryAsync(trajectory2);
+                            }
+                        }
                     }
                     break;
                 case TRAJECTORY_5:
-                    // Check if the drive class isn't busy
-                    // `isBusy() == true` while it's following the trajectory
-                    // Once `isBusy() == false`, the trajectory follower signals that it is finished
-                    // We move on to the next state
-                    // Make sure we use the async follow function
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 700 && limitfront.isPressed() && front == 0){
-                        front = 1;
-                        drivetime = new ElapsedTime();
-                    }
-                    if(front == 1){
-                        armtarget = 1076;
-                        gripspinny.setPower(-1);
-                        if(armPose - armtarget < 100) {
-                            ready = true;
-                        }
-                    }else{
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                    }
-                    if (ready) {
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_6;
-                        drive.followTrajectorySequenceAsync(trajectory6);
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        gripspinny.setPower(1);
-                    }
+                    armtarget = 0;
+                    slidestarget = 0;
+                    wristpose = 0;
+                    currentState = AsyncFollowingFSM.State.IDLE;
+                    //parks
                     break;
-                case TRAJECTORY_6:
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 800){
-                        armtarget = 0;
-                        wristpose = 0;
-                        twistpose = .5;
-                        gripspinny.setPower(0);
-                    }
-                    if (!drive.isBusy()) {
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_7;
-                        idle();
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        wristpose = .5;
-                        gripspinny.setPower(0);
-                        just = 0;
-                    }
-                    break;
-                case TRAJECTORY_7:
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 2000 && just == 0){
-                        armtarget = (int) armspecimenpickup;
-                        wristpose = wristspecimenpickup;
-                        twistpose = .5;
-                        gripspinny.setPower(-1);
-                        drive.followTrajectorySequenceAsync(trajectory7);
-                        just = 1;
-                    }
-                    if((!limitwrist1.getState() || !limitwrist2.getState()) && front == 0 && just == 1) {
-                        //raise arm to take off hook and bring arm in
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = 1;
-                        twistpose = twistspecimen;
-                        r1press = 2;
-                        drivetime = new ElapsedTime();
-                        front = 0;
-                        just = 2;
-                    }
-                    if(just == 2 && drivetime.time(TimeUnit.MILLISECONDS) > 200 && drivetime.time(TimeUnit.MILLISECONDS) > 400){
-                        wristpose = wristspecimen;
-                    }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && limitfront.isPressed() && front == 0 && just == 2){
-                        front = 1;
-                        just = 3;
-                    }
-                    if(front == 1){
-                        armtarget = 1076;
-                        gripspinny.setPower(-1);
-                        if(armPose - armtarget < 100) {
-                            ready = true;
-                        }
-                    }
-                    if (ready) {
-                        currentState = AsyncFollowingFSM.State.IDLE;
-                        idle();
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        gripspinny.setPower(1);
-                    }
 
                 case IDLE:
-                    // Do nothing in IDLE
-                    // currentState does not change once in IDLE
-                    // This concludes the autonomous program
+
                     break;
             }
 
@@ -447,6 +386,7 @@ public class AllBluesAuto extends LinearOpMode {
             telemetry.addData("state", currentState);
             telemetry.addData("ready", ready);
             telemetry.addData("doing stuff", drive.isBusy());
+            telemetry.addData("just", just);
             telemetry.update();
         }
     }
@@ -487,7 +427,7 @@ public class AllBluesAuto extends LinearOpMode {
         slides = hardwareMap.get(DcMotor.class, "slides"); //0 to -3.5 limit
         Arm1 = hardwareMap.get(DcMotor.class, "Arm1");
         Arm2 = hardwareMap.get(DcMotor.class, "Arm2");
-        ArmPos = hardwareMap.get(DcMotor.class, "ArmPos");
+        ArmPos = hardwareMap.get(AnalogInput.class, "ArmPos");
         gripspinny = hardwareMap.get(CRServo.class, "gripspinny");
         wristy = hardwareMap.get(Servo.class, "wrist");
         twisty = hardwareMap.get(Servo.class, "twist");
@@ -496,18 +436,16 @@ public class AllBluesAuto extends LinearOpMode {
         front_right = hardwareMap.get(DcMotor.class, "front_right");
         rear_left = hardwareMap.get(DcMotor.class, "rear_left");
         rear_right = hardwareMap.get(DcMotor.class, "rear_right");
-        limitarm = hardwareMap.get(DigitalChannel.class, "limitarm");
         limitwrist1 = hardwareMap.get(DigitalChannel.class, "limitwrist1");
         limitwrist2 = hardwareMap.get(DigitalChannel.class, "limitwrist2");
+        limitwrist3 = hardwareMap.get(DigitalChannel.class, "limitwrist3");
         limitfront = hardwareMap.get(RevTouchSensor.class, "limitfront");
-        wristy.setPosition(0);
-        twisty.setPosition(.5);
+        limitfront2 = hardwareMap.get(RevTouchSensor.class, "limitfront2");
         gripspinny.setPower(0);
         slides.setDirection(DcMotor.Direction.REVERSE);
         slides.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         slides.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         Arm1 .setDirection(DcMotor.Direction.REVERSE);
-        ArmPos.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         Arm1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         Arm2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         gripspinny.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -520,7 +458,7 @@ public class AllBluesAuto extends LinearOpMode {
         front_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rear_left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rear_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        armtarget = 0;
+        armtarget = (int) (14.5 * armticks);
         slidestarget = 0;
     }
     public void arm(){
@@ -548,28 +486,29 @@ public class AllBluesAuto extends LinearOpMode {
             slides.setPower(-power);
         }
         armcontroller.setPID(armp, armi, armd);
-        armPose = ArmPos.getCurrentPosition();
+        armPose = (1 - ArmPos.getVoltage() - .2) / ticks * armticks;
         double armpid = controller.calculate(armPose, armtarget);
         double armff = Math.cos(Math.toRadians(armtarget)) * armf;
         double armpower = armpid + armff;
         if(-200 < armPose - armtarget && armPose - armtarget < 200 && (gamepad2.left_stick_y > .1 || gamepad2.left_stick_y < -.1)){
             Arm1.setPower(gamepad2.left_stick_y/2);
             Arm2.setPower(gamepad2.left_stick_y/2);
-            armtarget = (int) (ArmPos.getCurrentPosition());
+            armtarget = (int) (armPose);
         }else {
             Arm1.setPower(-armpower);
             Arm2.setPower(-armpower);
         }
-
-        wristy.setPosition(wristpose);
-        twisty.setPosition(twistpose);
+        if(opModeIsActive()) {
+            wristy.setPosition(wristpose);
+            twisty.setPosition(twistpose);
+        }
 
     }
     public void extra_in(){
         if(r1press == 2){
             runtime = new ElapsedTime();
             r1press = 3;
-        }else if(r1press == 3 && runtime.time(TimeUnit.MILLISECONDS) < 500){
+        }else if(r1press == 3 && runtime.time(TimeUnit.MILLISECONDS) < 100){
             gripspinny.setPower(-1);
         }else if(r1press == 3){
             gripspinny.setPower(0);

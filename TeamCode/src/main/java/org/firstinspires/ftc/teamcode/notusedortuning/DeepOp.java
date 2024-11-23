@@ -1,10 +1,11 @@
-package org.firstinspires.ftc.teamcode.drive.opmode;
+package org.firstinspires.ftc.teamcode.notusedortuning;
 
 import static java.lang.Math.abs;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -29,6 +30,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
   Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
  */
 @Config
+@Disabled
 @TeleOp(name="DeepOp", group="ABC Opmode")
 //@Disabled
 public class DeepOp extends LinearOpMode {

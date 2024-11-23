@@ -6,6 +6,7 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -40,7 +41,7 @@ public class ArmTest extends OpMode {
     private DcMotor slides = null;
     private DcMotor Arm1 = null;
     private DcMotor Arm2 = null;
-    private DcMotor ArmPos = null;
+    private AnalogInput ArmPos = null;
     private Servo wristy = null;
     private Servo twisty = null;
     private CRServo gripspinny = null;
@@ -71,7 +72,7 @@ public class ArmTest extends OpMode {
         slides = hardwareMap.get(DcMotor.class, "slides"); //0 to -3.5 limit
         Arm1 = hardwareMap.get(DcMotor.class, "Arm1");
         Arm2 = hardwareMap.get(DcMotor.class, "Arm2");
-        ArmPos = hardwareMap.get(DcMotor.class, "ArmPos");
+        ArmPos = hardwareMap.get(AnalogInput.class, "ArmPos");
         gripspinny = hardwareMap.get(CRServo.class, "gripspinny");
         wristy = hardwareMap.get(Servo.class, "wrist");
         twisty = hardwareMap.get(Servo.class, "twist");
@@ -82,8 +83,6 @@ public class ArmTest extends OpMode {
         slides.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         slides.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         Arm1 .setDirection(DcMotor.Direction.REVERSE);
-        ArmPos.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        ArmPos.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         Arm1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         Arm2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         gripspinny.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -153,7 +152,9 @@ public class ArmTest extends OpMode {
             telemetry.addData("power", power);
             telemetry.update();*/
             armcontroller.setPID(armp, armi, armd);
-            double armPose = ArmPos.getCurrentPosition();
+            double ticks = .002866;
+            double conversion = ticks * armticks;
+            double armPose = (1 - ArmPos.getVoltage() - .2) / ticks * armticks;
             double armpid = controller.calculate(armPose, armtarget);
             double armff = Math.cos(Math.toRadians(armtarget)) * armf;
 
@@ -171,7 +172,9 @@ public class ArmTest extends OpMode {
             telemetry.update();
         }else{
             double slidesPose = -slides.getCurrentPosition() / slideticks;
-            double ArmPose = ArmPos.getCurrentPosition() / armticks;
+            double ticks = .002866;
+            double conversion = ticks * armticks;
+            double ArmPose = (1 - ArmPos.getVoltage() - .2) / ticks * armticks;
             if (slidesPose < bottomlimit && gamepad1.left_stick_y > 0){
                 slides.setPower(0);
             }else if(slidesPose > toplimit && gamepad1.left_stick_y < 0){

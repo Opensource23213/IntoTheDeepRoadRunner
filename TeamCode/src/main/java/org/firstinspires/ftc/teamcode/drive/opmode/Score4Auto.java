@@ -13,6 +13,7 @@ import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.hardware.rev.RevTouchSensor;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -33,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * FFTCOpenSourceAutonomouss Example for only vision detection using tensorflow and park
  */
-
+@Disabled
 @Autonomous(name = "Score4", group = "00-Autonomous", preselectTeleOp = "Codethatworks")
 public class Score4Auto extends LinearOpMode {
     private PIDController controller;
@@ -76,10 +77,10 @@ public class Score4Auto extends LinearOpMode {
     double twistbasket = .5;
     double wristbasket = .6;
     double slidespecimen = .5;
-    double armspecimen = 1408;
+    double armspecimen = 1458;
     double wristspecimen = .3;
     double twistspecimen = .5;
-    double armspecimenpickup = 20;
+    double armspecimenpickup = 80;
     double wristspecimenpickup = .51;
     double xpress = 1;
     public double start = 0;
@@ -186,6 +187,7 @@ public class Score4Auto extends LinearOpMode {
                 .splineToSplineHeading(new Pose2d(1, 40, Math.toRadians(-90)), Math.toRadians(-90))
                 .splineToConstantHeading(new Vector2d(1, 23), Math.toRadians(-100))
                 .build();
+
         // Define a 1.5 second wait time
         double waitTime1 = 1.5;
         ElapsedTime waitTimer1 = new ElapsedTime();

@@ -1,13 +1,17 @@
-package org.firstinspires.ftc.teamcode.drive.opmode;
+package org.firstinspires.ftc.teamcode.notusedortuning;
 
 import static java.lang.Math.abs;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.hardware.rev.RevTouchSensor;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -21,12 +25,17 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AngularVelocity;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.drive.AsyncFollowingFSM;
+import org.firstinspires.ftc.teamcode.drive.PoseStorage;
+import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
+import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
 
 import java.util.concurrent.TimeUnit;
 
 
 @Config
-@TeleOp(name="Codethatworks", group="ABC Opmode")
+@Disabled
+@TeleOp(name="OldTeleop", group="ABC Opmode")
 //@Disabled
 public class Codethatworks extends OpMode {
     private PIDController controller;
@@ -69,13 +78,15 @@ public class Codethatworks extends OpMode {
     double twistbasket = .5;
     double wristbasket = .2;
     double slidespecimen = .5;
-    double armspecimen = 1408;
+    double armspecimen = 1458;
     double wristspecimen = .3;
     double twistspecimen = .5;
-    double armspecimenpickup = 20;
+    double armspecimenpickup = 40;
     double wristspecimenpickup = .51;
     double xpress = 1;
-    public Button buttons = null;
+    double times = 0;
+    public Button1 buttons1 = null;
+    public Button2 buttons2 = null;
     public double start = 0;
     public IMU imu = null;
     public DcMotor front_left = null;
@@ -90,18 +101,57 @@ public class Codethatworks extends OpMode {
     public DigitalChannel limitarm;
     public double r1press = 1;
     public double armPose = 0;
+    double press = 1;
     double slidesPose = 0;
     double armreset = 1;
     double offset = 0;
+    double many = 1;
     double newpos = -312;
     double ypress = 1;
     double check = 1;
+    double oldangle = 0;
+    enum State {
+        TRAJECTORY_1,   // First, follow a splineTo() trajectory
+        TRAJECTORY_2,   // Then, follow a lineTo() trajectory
+        // Then we want to do a point turn
+        TRAJECTORY_3,   // Then, we follow another lineTo() trajectory
+        TRAJECTORY_4,         // Then we're gonna wait a second
+        TRAJECTORY_5,         // Finally, we're gonna turn again
+        TRAJECTORY_6,
+        IDLE            // Our bot will enter the IDLE state when done
+    }
+
+    // We define the current state we're on
+    // Default to IDLE
+    AsyncFollowingFSM.State currentState = AsyncFollowingFSM.State.IDLE;
+    double front = 0;
+    double scored = 1;
+
+    // Define our start pose
+    // This assumes we start at x: 15, y: 10, heading: 180 degrees
+    Pose2d startPose = new Pose2d(-37, 61, Math.toRadians(90));
     RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
     RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
 
     RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
+    SampleMecanumDrive drive = null;
+    double just = 0;
+    boolean ready = false;
+    double aapress = 1;
+    ElapsedTime drivetime = new ElapsedTime();
+    Trajectory trajectory1 = null;
+    Trajectory turn = null;
+    TrajectorySequence trajectory2 = null;
+    TrajectorySequence trajectory3 = null;
+    TrajectorySequence trajectory4 = null;
+    TrajectorySequence trajectory5 = null;
+    TrajectorySequence trajectory6 = null;
+    TrajectorySequence trajectory7 = null;
+    TrajectorySequence trajectory8 = null;
+    Pose2d poseEstimate = null;
     @Override
     public void init() {
+        drive = new SampleMecanumDrive(hardwareMap);
         controller = new PIDController(p, i, d);
         armcontroller = new PIDController(armp, armi, armd);
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
@@ -121,8 +171,6 @@ public class Codethatworks extends OpMode {
         limitwrist2 = hardwareMap.get(DigitalChannel.class, "limitwrist2");
         limitarm = hardwareMap.get(DigitalChannel.class, "limitarm");
         limitfront = hardwareMap.get(RevTouchSensor.class, "limitfront");
-        wristy.setPosition(.5);
-        twisty.setPosition(.5);
         gripspinny.setPower(0);
         slides.setDirection(DcMotor.Direction.REVERSE);
         slides.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -141,8 +189,53 @@ public class Codethatworks extends OpMode {
         front_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rear_left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rear_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        buttons1 = new Button1();
+        buttons2 = new Button2();
+        drive.setPoseEstimate(new Pose2d());
 
-        buttons = new Button();
+        // Let's define our trajectories
+
+
+        // Third trajectory
+        // We have to define a new end pose because we can't just call trajectory2.end()
+        // Since there was a point turn before that
+        // So we just take the pose from trajectory2.end(), add the previous turn angle to it
+        trajectory3 = drive.trajectorySequenceBuilder(startPose)
+                .splineToConstantHeading(new Vector2d(-35.5, 61), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(3, 40, Math.toRadians(-90)), Math.toRadians(-90))
+                .splineToConstantHeading(new Vector2d(1, 29.5), Math.toRadians(-90))
+                .build();
+        trajectory4 = drive.trajectorySequenceBuilder(trajectory3.end())
+                .splineToSplineHeading(new Pose2d(3, 39, Math.toRadians(-90)), Math.toRadians(90))
+                .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-38.8, 61, Math.toRadians(90)), Math.toRadians(90))
+                .build();
+        trajectory5 = drive.trajectorySequenceBuilder(trajectory4.end())
+                .splineToConstantHeading(new Vector2d(-38.7, 61), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(1, 40, Math.toRadians(-90)), Math.toRadians(-90))
+                .splineToConstantHeading(new Vector2d(0, 29.5), Math.toRadians(-90))
+                .build();
+        trajectory6 = drive.trajectorySequenceBuilder(trajectory5.end())
+                .splineToSplineHeading(new Pose2d(3, 39, Math.toRadians(-90)), Math.toRadians(90))
+                .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-41, 61, Math.toRadians(90)), Math.toRadians(90))
+                .build();
+        trajectory7 = drive.trajectorySequenceBuilder(trajectory6.end())
+                .splineToLinearHeading(new Pose2d(-38.5, 61, Math.toRadians(90)), Math.toRadians(90))
+                .splineToConstantHeading(new Vector2d(-29, 61), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(1, 40, Math.toRadians(-90)), Math.toRadians(-90))
+                .splineToConstantHeading(new Vector2d(-1, 23), Math.toRadians(-100))
+                .build();
+        turn = drive.trajectoryBuilder(new Pose2d())
+                .lineToLinearHeading(new Pose2d(0, 0.1, Math.toRadians(180)))
+                .build();
+        // Define a 1.5 second wait time
+        double waitTime1 = 1.5;
+        ElapsedTime waitTimer1 = new ElapsedTime();
+
+        // Define the angle for turn 2
+        double turnAngle2 = Math.toRadians(720);
+        boolean ready = false;
         armtarget = 0;
         slidestarget = 0;
 
@@ -151,18 +244,211 @@ public class Codethatworks extends OpMode {
     double twistpose = .5;
     @Override
     public void loop() {
-        buttons.button();
         arm();
         drop();
         spit();
-        drive();
         extra_in();
         basket();
         dropoff();
+        eddy();
         basketdrop();
+        spit2();
+        if(gamepad1.a){
+            currentState = AsyncFollowingFSM.State.TURN_1;
+            drive.followTrajectoryAsync(turn);
+            turn = drive.trajectoryBuilder(poseEstimate)
+                    .lineToLinearHeading(new Pose2d(poseEstimate.getX(), poseEstimate.getY() + .1, Math.toRadians(0)))
+                    .build();
+
+        }
+        switch (currentState) {
+
+            case TRAJECTORY_3:
+                // Check if the drive class isn't busy
+                // `isBusy() == true` while it's following the trajectory
+                // Once `isBusy() == false`, the trajectory follower signals that it is finished
+                // We move on to the next state
+                // Make sure we use the async follow function
+                if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && limitfront.isPressed() && front == 0){
+                    front = 1;
+                    drivetime = new ElapsedTime();
+                }
+                if(front == 1){
+                    armtarget = 1076;
+                    gripspinny.setPower(-1);
+                    if(armPose - armtarget < 100) {
+                        ready = true;
+                    }
+                }else{
+                    armtarget = (int) armspecimen;
+                    slidestarget = (int) (slidespecimen * slideticks * 2);
+                    wristpose = wristspecimen;
+                    twistpose = twistspecimen;
+                }
+                if (ready) {
+                    currentState = AsyncFollowingFSM.State.TRAJECTORY_4;
+                    drive.followTrajectorySequenceAsync(trajectory4);
+                    drivetime = new ElapsedTime();
+                    ready = false;
+                    front = 0;
+                    many += 1;
+                    gripspinny.setPower(1);
+                }
+                break;
+            case TRAJECTORY_4:
+                // Check if the drive class is busy following the trajectory
+                // Move on to the next state, TURN_1, once finished
+                if(drivetime.time(TimeUnit.MILLISECONDS) > 700 && drivetime.time(TimeUnit.MILLISECONDS) < 1000){
+                    armtarget = (int) armspecimenpickup;
+                    wristpose = wristspecimenpickup;
+                    twistpose = .5;
+                    gripspinny.setPower(-1);
+                }
+                if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && (!limitwrist1.getState() || !limitwrist2.getState())) {
+                    //raise arm to take off hook and bring arm in
+                    armtarget = (int) armspecimen;
+                    slidestarget = (int) (slidespecimen * slideticks * 2);
+                    wristpose = wristspecimen;
+                    twistpose = twistspecimen;
+                    r1press = 2;
+                    ready = true;
+                }
+                if (ready) {
+                    ready = false;
+                    currentState = AsyncFollowingFSM.State.TRAJECTORY_5;
+                    drive.followTrajectorySequenceAsync(trajectory5);
+                    drivetime = new ElapsedTime();
+                }
+                break;
+            case TRAJECTORY_5:
+                // Check if the drive class isn't busy
+                // `isBusy() == true` while it's following the trajectory
+                // Once `isBusy() == false`, the trajectory follower signals that it is finished
+                // We move on to the next state
+                // Make sure we use the async follow function
+                if(drivetime.time(TimeUnit.MILLISECONDS) > 700 && limitfront.isPressed() && front == 0){
+                    front = 1;
+                    drivetime = new ElapsedTime();
+                }
+                if(front == 1){
+                    armtarget = 1076;
+                    gripspinny.setPower(-1);
+                    if(armPose - armtarget < 100) {
+                        ready = true;
+                    }
+                }else{
+                    armtarget = (int) armspecimen;
+                    slidestarget = (int) (slidespecimen * slideticks * 2);
+                    wristpose = wristspecimen;
+                    twistpose = twistspecimen;
+                }
+                if (ready) {
+                    currentState = AsyncFollowingFSM.State.TRAJECTORY_6;
+                    drive.followTrajectorySequenceAsync(trajectory6);
+                    drivetime = new ElapsedTime();
+                    many += 1;
+                    ready = false;
+                    front = 0;
+                    gripspinny.setPower(1);
+                }
+                break;
+            case TRAJECTORY_6:
+                // Check if the drive class is busy following the trajectory
+                // Move on to the next state, TURN_1, once finished
+                if(drivetime.time(TimeUnit.MILLISECONDS) > 700 && drivetime.time(TimeUnit.MILLISECONDS) < 1000){
+                    armtarget = (int) armspecimenpickup;
+                    wristpose = wristspecimenpickup;
+                    twistpose = .5;
+                    gripspinny.setPower(-1);
+                }
+                if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && (!limitwrist1.getState() || !limitwrist2.getState())) {
+                    //raise arm to take off hook and bring arm in
+                    armtarget = (int) armspecimen;
+                    slidestarget = (int) (slidespecimen * slideticks * 2);
+                    wristpose = wristspecimen;
+                    twistpose = twistspecimen;
+                    r1press = 2;
+                    ready = true;
+                }
+                if(ready && many >= times){
+                    many = 0;
+                    ready = false;
+                    currentState = AsyncFollowingFSM.State.TRAJECTORY_7;
+                    drive.followTrajectorySequenceAsync(trajectory7);
+                    drivetime = new ElapsedTime();
+                }
+                else if(ready) {
+                    many += 1;
+                    ready = false;
+                    currentState = AsyncFollowingFSM.State.TRAJECTORY_5;
+                    drive.followTrajectorySequenceAsync(trajectory5);
+                    drivetime = new ElapsedTime();
+                }
+                break;
+            case TRAJECTORY_7:
+                if(drivetime.time(TimeUnit.MILLISECONDS) > 700 && limitfront.isPressed() && front == 0){
+                    front = 1;
+                    drivetime = new ElapsedTime();
+                }
+                if(front == 1){
+                    armtarget = 1076;
+                    gripspinny.setPower(-1);
+                    if(armPose - armtarget < 100) {
+                        ready = true;
+                    }
+                }else{
+                    armtarget = (int) armspecimen;
+                    slidestarget = (int) (slidespecimen * slideticks * 2);
+                    wristpose = wristspecimen;
+                    twistpose = twistspecimen;
+                }
+                if (ready) {
+                    currentState = AsyncFollowingFSM.State.IDLE;
+                    drive.setPoseEstimate(new Pose2d());
+                    drivetime = new ElapsedTime();
+                    ready = false;
+                    front = 0;
+                    times = 3;
+                    gripspinny.setPower(1);
+                }
+                break;
+            case TURN_1:
+                if(!drive.isBusy()){
+                    currentState = AsyncFollowingFSM.State.IDLE;
+                }
+            case IDLE:
+                // Do nothing in IDLE
+                // currentState does not change once in IDLE
+                // This concludes the autonomous program
+                drive();
+                buttons1.button();
+                buttons2.button();
+                break;
+        }
+
+        // Anything outside of the switch statement will run independent of the currentState
+
+        // We update drive continuously in the background, regardless of state
+        drive.update();
+        // We update our lift PID continuously in the background, regardless of state
+
+        // Read pose
+        poseEstimate = drive.getPoseEstimate();
+
+        // Continually write pose to `PoseStorage`
+        PoseStorage.currentPose = poseEstimate;
+
+        // Continually write pose to `PoseStorage`
+        PoseStorage.currentPose = poseEstimate;
+
     }
+
     public void drive(){
+        drive.update();
+        Pose2d poseEstimate = drive.getPoseEstimate();
         YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
+        double angle = poseEstimate.getHeading();
+        telemetry.addData("dead wheels", Math.toDegrees(angle));
         AngularVelocity angularVelocity = imu.getRobotAngularVelocity(AngleUnit.DEGREES);
         double axial = 0;
         double lateral = 0;
@@ -195,6 +481,7 @@ public class Codethatworks extends OpMode {
             imu.initialize(new IMU.Parameters(orientationOnRobot));
             imu.resetDeviceConfigurationForOpMode();
             imu.resetYaw();
+            drive.setPoseEstimate(new Pose2d(poseEstimate.getX(), poseEstimate.getY(), Math.toRadians(0)));
         }
 
         //elbow1.setPosition(servo1pose);
@@ -207,7 +494,7 @@ public class Codethatworks extends OpMode {
 
         // If the sticks are being used
         if(!gamepad1.dpad_left & !gamepad1.dpad_right & !gamepad1.dpad_up & !gamepad1.dpad_down) {
-            double yaw_rad = orientation.getYaw(AngleUnit.RADIANS) + 3.14159 / 2;
+            double yaw_rad = /*orientation.getYaw(AngleUnit.RADIANS)*/angle + 3.14159 / 2;
             double temp = axial * Math.sin(yaw_rad) + lateral * Math.cos(yaw_rad);
             lateral = -axial * Math.cos(yaw_rad) + lateral * Math.sin(yaw_rad);
             //double temp = axial * Math.cos(yaw_rad) + lateral * Math.sin(yaw_rad);
@@ -239,7 +526,7 @@ public class Codethatworks extends OpMode {
 
     public void arm(){
         if(armreset == 1) {
-            toplimit = 1406;
+            toplimit = 1406 + (2 * slideticks * 2);
             controller.setPID(p, i, d);
             slidesPose = -slides.getCurrentPosition() * 2;
             armd = -slides.getCurrentPosition() / slideticks * .03 / 19.6;
@@ -252,7 +539,7 @@ public class Codethatworks extends OpMode {
                 if (otherPose < bottomlimit && gamepad2.right_stick_y > 0) {
                     slides.setPower(0);
                     slidestarget = (int) (-slides.getCurrentPosition() * 2);
-                } else if (otherPose > toplimit && gamepad2.right_stick_y < 0) {
+                } else if (slidesPose > toplimit && gamepad2.right_stick_y < 0) {
                     slides.setPower(0);
                     slidestarget = (int) (-slides.getCurrentPosition() * 2);
                 } else {
@@ -285,11 +572,12 @@ public class Codethatworks extends OpMode {
             telemetry.addData("pose", armPose);
             telemetry.addData("target", armtarget);
             telemetry.addData("power", -armpower);
-            telemetry.addData("pose", slidesPose - slidestarget);
+            telemetry.addData("now - target", slidesPose - slidestarget);
             telemetry.addData("pose", slidesPose);
             telemetry.addData("target", slidestarget);
             telemetry.addData("power", -power);
             telemetry.addData("state", !limitarm.getState());
+
             telemetry.update();
 
             wristy.setPosition(wristpose);
@@ -299,7 +587,7 @@ public class Codethatworks extends OpMode {
         }
 
     }
-    public class Button{
+    public class Button2{
         String button = "";
         String nowbutton = "";
         String lastbutton = "";
@@ -457,7 +745,7 @@ public class Codethatworks extends OpMode {
                     //brings arm back
                     wristpose = .5;
                     twistpose = .5;
-                    apress = 2;
+                    aapress = 2;
                     armtarget = 0;
                     slidestarget = 0;
                     nowbutton = "";
@@ -598,6 +886,186 @@ public class Codethatworks extends OpMode {
             }
         }
     }
+    public class Button1{
+        String button = "";
+        String nowbutton = "";
+        String lastbutton = "";
+        String type = "";
+        public void button(){
+            if (button == "") {
+                if (gamepad1.a) {
+                    button = "a";
+                }
+                else if(gamepad1.b){
+                    button = "b";
+                }
+                else if (gamepad1.x){
+                    button = "x";
+                }
+                else if (gamepad1.y){
+                    button = "y";
+                }
+                else if (gamepad1.right_bumper){
+                    button = "r1";
+                }
+                else if (gamepad1.left_bumper){
+                    button = "l1";
+                }
+                else if (gamepad1.left_trigger > .4){
+                    button = "l2";
+                }
+                else if (gamepad1.right_trigger > .4){
+                    button = "r2";
+                }else if (gamepad1.dpad_up){
+                    button = "up";
+                }
+                else if (gamepad1.dpad_down){
+                    button = "down";
+                }
+                else if (gamepad1.dpad_left){
+                    button = "left";
+                }
+                else if (gamepad1.dpad_right){
+                    button = "right";
+                }else if (gamepad1.ps){
+                    button = "ps";
+                }
+                else if (gamepad1.left_stick_button){
+                    button = "l3";
+                }
+                else if (gamepad1.right_stick_button){
+                    button = "r3";
+                }
+            }
+            endbutton();
+            ButtonControl();
+        }
+        public void ButtonControl(){
+            if(lastbutton == ""){
+                if(nowbutton == "r2" ) {
+                    press = 2;
+                    nowbutton = "";
+                    lastbutton = "";
+                }else if (nowbutton == "r3"){
+                    ready = false;
+                    currentState = AsyncFollowingFSM.State.TURN_1;
+                    turn = drive.trajectoryBuilder(poseEstimate)
+                            .lineToLinearHeading(new Pose2d(poseEstimate.getX(), poseEstimate.getY() + .1, Math.toRadians(180)))
+                            .build();
+                    drive.followTrajectoryAsync(turn);
+                    drivetime = new ElapsedTime();
+                    lastbutton = "";
+                    nowbutton = "";
+                }
+                else if(nowbutton == "l1"){
+                    //Arm moves to pick up stuff from eddy
+                    armtarget = (int) armspecimenpickup;
+                    wristpose = wristspecimenpickup;
+                    times = 3;
+                    many = 1;
+                    twistpose = .5;
+                    gripspinny.setPower(-1);
+                    lastbutton = "l1";
+                    nowbutton = "";
+                }
+                else if(nowbutton == "l2"){
+                    //Arm moves to pick up stuff from eddy
+                    armtarget = (int) armspecimenpickup;
+                    wristpose = wristspecimenpickup;
+                    times = 4;
+                    many = 1;
+                    twistpose = .5;
+                    gripspinny.setPower(-1);
+                    lastbutton = "l1";
+                    nowbutton = "";
+                }
+            }
+
+
+            else if(lastbutton == "l1"){
+                if(!limitwrist1.getState() || !limitwrist2.getState()){
+                    //raise arm to take off hook and bring arm in
+                    ready = false;
+                    currentState = AsyncFollowingFSM.State.TRAJECTORY_3;
+                    drive.followTrajectorySequenceAsync(trajectory3);
+                    drivetime = new ElapsedTime();
+                    drive.setPoseEstimate(startPose);
+                    gripspinny.setPower(0);
+                    lastbutton = "";
+                    nowbutton = "";
+
+                }
+                if(nowbutton == "r2"){
+                    armtarget = 0;
+                    slidestarget = 0;
+                    gripspinny.setPower(0);
+                    wristpose = 0;
+                    nowbutton = "";
+                    lastbutton = "";
+                }
+            }
+        }
+        public void endbutton(){
+            if (!gamepad1.a && button == "a") {
+                nowbutton = "a";
+                button = "";
+            }
+            else if(!gamepad1.b && button == "b"){
+                nowbutton = "b";
+                button = "";
+            }
+            else if (!gamepad1.x && button == "x"){
+                nowbutton = "x";
+                button = "";
+            }
+            else if (!gamepad1.y && button == "y"){
+                nowbutton = "y";
+                button = "";
+            }
+            else if (!gamepad1.right_bumper && button == "r1"){
+                nowbutton = "r1";
+                button = "";
+            }
+            else if (!gamepad1.left_bumper && button == "l1"){
+                nowbutton = "l1";
+                button = "";
+            }
+            else if (gamepad1.left_trigger < .4 && button == "l2"){
+                nowbutton = "l2";
+                button = "";
+            }
+            else if (gamepad1.right_trigger < .4 && button == "r2"){
+                nowbutton = "r2";
+                button = "";
+            }else if (!gamepad1.dpad_up && button == "up"){
+                nowbutton = "up";
+                button = "";
+            }
+            else if (!gamepad1.dpad_down && button == "down"){
+                nowbutton = "down";
+                button = "";
+            }
+            else if (!gamepad1.dpad_left && button == "left"){
+                nowbutton = "left";
+                button = "";
+            }
+            else if (!gamepad1.dpad_right && button == "right"){
+                nowbutton = "right";
+                button = "";
+            }else if (!gamepad1.ps && button == "ps"){
+                nowbutton = "ps";
+                button = "";
+            }
+            else if (!gamepad1.left_stick_button && button == "l3"){
+                nowbutton = "l3";
+                button = "";
+            }
+            else if (!gamepad1.right_stick_button && button == "r3"){
+                nowbutton = "r3";
+                button = "";
+            }
+        }
+    }
     public void extra_in(){
         if(r1press == 2){
             runtime = new ElapsedTime();
@@ -631,13 +1099,26 @@ public class Codethatworks extends OpMode {
         if(apress == 2){
             runtime = new ElapsedTime();
             apress = 3;
-        }else if(apress == 3 && runtime.time(TimeUnit.MILLISECONDS) < 100){
+        }else if(apress == 3 && runtime.time(TimeUnit.MILLISECONDS) < 150){
             gripspinny.setPower(1);
         }else if(apress == 3 && runtime.time(TimeUnit.MILLISECONDS) < 500){
             gripspinny.setPower(-1);
         }else if(apress == 3){
             gripspinny.setPower(0);
             apress = 1;
+        }
+    }
+    public void spit2(){
+        if(aapress == 2){
+            runtime = new ElapsedTime();
+            aapress = 3;
+        }else if(aapress == 3 && runtime.time(TimeUnit.MILLISECONDS) < 100){
+            gripspinny.setPower(1);
+        }else if(aapress == 3 && runtime.time(TimeUnit.MILLISECONDS) < 500){
+            gripspinny.setPower(-1);
+        }else if(aapress == 3){
+            gripspinny.setPower(0);
+            aapress = 1;
         }
     }
     public void reset(){
@@ -658,7 +1139,7 @@ public class Codethatworks extends OpMode {
             runtime = new ElapsedTime();
             gripspinny.setPower(1);
             ypress = 2;
-        }else if(ypress == 2 && runtime.time(TimeUnit.MILLISECONDS) > 500){
+        }else if(ypress == 2 && runtime.time(TimeUnit.MILLISECONDS) > 200){
             gripspinny.setPower(0);
             ypress = 1;
         }
@@ -677,6 +1158,21 @@ public class Codethatworks extends OpMode {
             rpress = 1;
         }
 
+    }
+    public void eddy(){
+        if(press == 2){
+            armtarget = 0;
+            slidestarget = (int) (1800 - (2*slideticks*2));
+            wristpose = 0;
+            press = 3;
+        }else if(press == 3 && abs(abs(slidesPose) - abs(slidestarget)) < 700){
+            ypress = 1.5;
+            press = 4;
+        }else if(press == 4 && ypress == 1){
+            armtarget = 0;
+            slidestarget = 0;
+            press = 1;
+        }
     }
 }
 

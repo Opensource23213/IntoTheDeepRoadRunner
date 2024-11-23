@@ -1,6 +1,6 @@
 
 
-package org.firstinspires.ftc.teamcode.drive.opmode;
+package org.firstinspires.ftc.teamcode.notusedortuning;
 
 import static java.lang.Math.abs;
 
@@ -35,8 +35,8 @@ import java.util.concurrent.TimeUnit;
  * FFTCOpenSourceAutonomouss Example for only vision detection using tensorflow and park
  */
 @Disabled
-@Autonomous(name = "AllBlues", group = "00-Autonomous", preselectTeleOp = "Codethatworks")
-public class AllBluesAuto extends LinearOpMode {
+@Autonomous(name = "JustPark", group = "00-Autonomous", preselectTeleOp = "Codethatworks")
+public class JustParkAuto extends LinearOpMode {
     private PIDController controller;
     private PIDController armcontroller;
 
@@ -83,6 +83,7 @@ public class AllBluesAuto extends LinearOpMode {
     double armspecimenpickup = 20;
     double wristspecimenpickup = .51;
     double xpress = 1;
+    public Codethatworks.Button2 buttons = null;
     public double start = 0;
     public IMU imu = null;
     public DcMotor front_left = null;
@@ -90,7 +91,6 @@ public class AllBluesAuto extends LinearOpMode {
     public DcMotor front_right = null;
     public DcMotor rear_right = null;
     public double apress = 1;
-    double just = 0;
     public RevTouchSensor limitfront;
     public DigitalChannel limitwrist1;
     public DigitalChannel limitwrist2;
@@ -142,14 +142,16 @@ public class AllBluesAuto extends LinearOpMode {
         Trajectory trajectory1 = drive.trajectoryBuilder(startPose)
                 .lineToLinearHeading(new Pose2d(-3.5, 31, Math.toRadians(-90)))
                 .build();
-
+        Trajectory stop = drive.trajectoryBuilder(trajectory1.end())
+                .forward(.1)
+                .build();
 
         // Second trajectory
         // Ensure that we call trajectory1.end() as the start for this one
-        TrajectorySequence trajectory2 = drive.trajectorySequenceBuilder(trajectory1.end())
+        TrajectorySequence trajectory2 = drive.trajectorySequenceBuilder(stop.end())
                 .splineToSplineHeading(new Pose2d(-3.5, 39, Math.toRadians(-90)), Math.toRadians(90))
                 .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-37, 61, Math.toRadians(90)), Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(-36, 61, Math.toRadians(90)), Math.toRadians(90))
                 .build();
 
         // Define the angle to turn at
@@ -159,33 +161,33 @@ public class AllBluesAuto extends LinearOpMode {
         // We have to define a new end pose because we can't just call trajectory2.end()
         // Since there was a point turn before that
         // So we just take the pose from trajectory2.end(), add the previous turn angle to it
+        Pose2d newLastPose = trajectory2.end().plus(new Pose2d(0, 0, turnAngle1));
         TrajectorySequence trajectory3 = drive.trajectorySequenceBuilder(trajectory2.end())
                 .splineToConstantHeading(new Vector2d(-35.5, 61), Math.toRadians(0))
                 .splineToSplineHeading(new Pose2d(3, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(3, 29.5), Math.toRadians(-90))
+                .splineToConstantHeading(new Vector2d(3, 30), Math.toRadians(-90))
                 .build();
-        TrajectorySequence trajectory4 = drive.trajectorySequenceBuilder(trajectory3.end())
-                .splineToSplineHeading(new Pose2d(3, 39, Math.toRadians(-90)), Math.toRadians(90))
+        Trajectory stop2 = drive.trajectoryBuilder(trajectory3.end())
+                .forward(2)
+                .build();
+        TrajectorySequence trajectory4 = drive.trajectorySequenceBuilder(stop.end())
+                .splineToSplineHeading(new Pose2d(-3.5, 39, Math.toRadians(-90)), Math.toRadians(90))
                 .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-36.2, 61, Math.toRadians(90)), Math.toRadians(90))
+                .splineToLinearHeading(new Pose2d(-36.5, 61, Math.toRadians(90)), Math.toRadians(90))
                 .build();
         TrajectorySequence trajectory5 = drive.trajectorySequenceBuilder(trajectory4.end())
-                .splineToConstantHeading(new Vector2d(-36.1, 61), Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(1, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(1, 29.5), Math.toRadians(-90))
+                .splineToConstantHeading(new Vector2d(-36, 61), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(2, 40, Math.toRadians(-90)), Math.toRadians(-90))
+                .splineToConstantHeading(new Vector2d(2, 30), Math.toRadians(-90))
                 .build();
-        TrajectorySequence trajectory6 = drive.trajectorySequenceBuilder(trajectory5.end())
-                .lineToLinearHeading(new Pose2d(-37, 50,Math.toRadians(-90)))
-                .lineToLinearHeading(new Pose2d(-37, 12,Math.toRadians(-90)))
-                .lineToLinearHeading(new Pose2d(-49, 12,Math.toRadians(90)))
-                .lineToLinearHeading(new Pose2d(-49, 58,Math.toRadians(90)))
-                .lineToLinearHeading(new Pose2d(-35.5, 48,Math.toRadians(90)))
+        Trajectory stop3 = drive.trajectoryBuilder(trajectory5.end())
+                .forward(2)
                 .build();
-        TrajectorySequence trajectory7 = drive.trajectorySequenceBuilder(trajectory6.end())
-                .splineToLinearHeading(new Pose2d(-35.5, 61, Math.toRadians(90)), Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-29, 61), Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(1, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(1, 23), Math.toRadians(-100))
+        TrajectorySequence trajectory6 = drive.trajectorySequenceBuilder(stop3.end())
+                .splineToConstantHeading(new Vector2d(5, 31), Math.toRadians(90))
+                .splineToConstantHeading(new Vector2d(-24, 45), Math.toRadians(0))
+                .splineToConstantHeading(new Vector2d(-45, 17), Math.toRadians(-110))
+                .splineToLinearHeading(new Pose2d(-25, 10, Math.toRadians(180)), Math.toRadians(0))
                 .build();
         // Define a 1.5 second wait time
         double waitTime1 = 1.5;
@@ -228,6 +230,7 @@ public class AllBluesAuto extends LinearOpMode {
                     if(front == 1){
                         armtarget = 1076;
                         gripspinny.setPower(-1);
+                        drive.followTrajectoryAsync(stop);
                         if(armPose - armtarget < 200) {
                             ready = true;
                         }
@@ -278,11 +281,14 @@ public class AllBluesAuto extends LinearOpMode {
                     // Once `isBusy() == false`, the trajectory follower signals that it is finished
                     // We move on to the next state
                     // Make sure we use the async follow function
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && limitfront.isPressed() && front == 0){
+                    if(!drive.isBusy() && !limitfront.isPressed()){
+                        drive.followTrajectoryAsync(stop2);
+                    }
+                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && limitfront.isPressed() && front == 0){
                         front = 1;
                         drivetime = new ElapsedTime();
                     }
-                    if(front == 1){
+                    if(front == 1 && drivetime.time(TimeUnit.MILLISECONDS) > 200){
                         armtarget = 1076;
                         gripspinny.setPower(-1);
                         if(armPose - armtarget < 100) {
@@ -335,11 +341,14 @@ public class AllBluesAuto extends LinearOpMode {
                     // Once `isBusy() == false`, the trajectory follower signals that it is finished
                     // We move on to the next state
                     // Make sure we use the async follow function
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 700 && limitfront.isPressed() && front == 0){
+                    if(!drive.isBusy() && !limitfront.isPressed()){
+                        drive.followTrajectoryAsync(stop3);
+                    }
+                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && limitfront.isPressed() && front == 0){
                         front = 1;
                         drivetime = new ElapsedTime();
                     }
-                    if(front == 1){
+                    if(front == 1 && drivetime.time(TimeUnit.MILLISECONDS) > 200){
                         armtarget = 1076;
                         gripspinny.setPower(-1);
                         if(armPose - armtarget < 100) {
@@ -361,66 +370,21 @@ public class AllBluesAuto extends LinearOpMode {
                     }
                     break;
                 case TRAJECTORY_6:
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 800){
+                    if(drivetime.time(TimeUnit.MILLISECONDS) > 400){
                         armtarget = 0;
                         wristpose = 0;
                         twistpose = .5;
                         gripspinny.setPower(0);
                     }
                     if (!drive.isBusy()) {
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_7;
-                        idle();
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        wristpose = .5;
-                        gripspinny.setPower(0);
-                        just = 0;
-                    }
-                    break;
-                case TRAJECTORY_7:
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 2000 && just == 0){
-                        armtarget = (int) armspecimenpickup;
-                        wristpose = wristspecimenpickup;
-                        twistpose = .5;
-                        gripspinny.setPower(-1);
-                        drive.followTrajectorySequenceAsync(trajectory7);
-                        just = 1;
-                    }
-                    if((!limitwrist1.getState() || !limitwrist2.getState()) && front == 0 && just == 1) {
-                        //raise arm to take off hook and bring arm in
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = 1;
-                        twistpose = twistspecimen;
-                        r1press = 2;
-                        drivetime = new ElapsedTime();
-                        front = 0;
-                        just = 2;
-                    }
-                    if(just == 2 && drivetime.time(TimeUnit.MILLISECONDS) > 200 && drivetime.time(TimeUnit.MILLISECONDS) > 400){
-                        wristpose = wristspecimen;
-                    }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && limitfront.isPressed() && front == 0 && just == 2){
-                        front = 1;
-                        just = 3;
-                    }
-                    if(front == 1){
-                        armtarget = 1076;
-                        gripspinny.setPower(-1);
-                        if(armPose - armtarget < 100) {
-                            ready = true;
-                        }
-                    }
-                    if (ready) {
                         currentState = AsyncFollowingFSM.State.IDLE;
                         idle();
                         drivetime = new ElapsedTime();
                         ready = false;
                         front = 0;
-                        gripspinny.setPower(1);
+                        gripspinny.setPower(0);
                     }
-
+                    break;
                 case IDLE:
                     // Do nothing in IDLE
                     // currentState does not change once in IDLE

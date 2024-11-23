@@ -14,6 +14,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.hardware.rev.RevTouchSensor;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -34,8 +35,8 @@ import java.util.concurrent.TimeUnit;
  * FFTCOpenSourceAutonomouss Example for only vision detection using tensorflow and park
  */
 
-@Autonomous(name = "JustPark", group = "00-Autonomous", preselectTeleOp = "Codethatworks")
-public class JustParkAuto extends LinearOpMode {
+@Autonomous(name = "Grabthepush", group = "00-Autonomous", preselectTeleOp = "Codethatworks")
+public class WeirdRonanAuto extends LinearOpMode {
     private PIDController controller;
     private PIDController armcontroller;
 
@@ -58,13 +59,14 @@ public class JustParkAuto extends LinearOpMode {
     private DcMotor slides = null;
     private DcMotor Arm1 = null;
     private DcMotor Arm2 = null;
-    private DcMotor ArmPos = null;
+    private AnalogInput ArmPos = null;
     private Servo wristy = null;
     private Servo twisty = null;
     private CRServo gripspinny = null;
 
     double mode = 1;
     double basketmove =1;
+    public double inta = 1;
     double slideratio = 2;
     double slideticks = 103.8 * slideratio / 4.75;
     double armticks = 8192 / 360;
@@ -76,13 +78,13 @@ public class JustParkAuto extends LinearOpMode {
     double twistbasket = .5;
     double wristbasket = .6;
     double slidespecimen = .5;
-    double armspecimen = 1408;
+    double armspecimen = 1380 ;
     double wristspecimen = .3;
     double twistspecimen = .5;
-    double armspecimenpickup = 20;
+    double armspecimenpickup = 60;
     double wristspecimenpickup = .51;
+    double ticks = .002866;
     double xpress = 1;
-    public Codethatworks.Button buttons = null;
     public double start = 0;
     public IMU imu = null;
     public DcMotor front_left = null;
@@ -90,10 +92,12 @@ public class JustParkAuto extends LinearOpMode {
     public DcMotor front_right = null;
     public DcMotor rear_right = null;
     public double apress = 1;
+    double just = 0;
     public RevTouchSensor limitfront;
+    public RevTouchSensor limitfront2;
     public DigitalChannel limitwrist1;
     public DigitalChannel limitwrist2;
-    public DigitalChannel limitarm;
+    public DigitalChannel limitwrist3;
     public double r1press = 1;
     public double armPose = 0;
     double slidesPose = 0;
@@ -120,10 +124,11 @@ public class JustParkAuto extends LinearOpMode {
     AsyncFollowingFSM.State currentState = AsyncFollowingFSM.State.IDLE;
     double front = 0;
     double scored = 1;
+    double yes = 0;
 
     // Define our start pose
     // This assumes we start at x: 15, y: 10, heading: 180 degrees
-    Pose2d startPose = new Pose2d(-3.5, 62.5, Math.toRadians(-90));
+    Pose2d startPose = new Pose2d(-15, 62.5, Math.toRadians(-90));
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -139,65 +144,37 @@ public class JustParkAuto extends LinearOpMode {
 
         // Let's define our trajectories
         Trajectory trajectory1 = drive.trajectoryBuilder(startPose)
-                .lineToLinearHeading(new Pose2d(-3.5, 31, Math.toRadians(-90)))
+                .lineToLinearHeading(new Pose2d(0, 29, Math.toRadians(-90)))
                 .build();
-        Trajectory stop = drive.trajectoryBuilder(trajectory1.end())
-                .forward(.1)
-                .build();
+
 
         // Second trajectory
         // Ensure that we call trajectory1.end() as the start for this one
-        TrajectorySequence trajectory2 = drive.trajectorySequenceBuilder(stop.end())
-                .splineToSplineHeading(new Pose2d(-3.5, 39, Math.toRadians(-90)), Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-36, 61, Math.toRadians(90)), Math.toRadians(90))
-                .build();
 
         // Define the angle to turn at
         double turnAngle1 = Math.toRadians(-270);
+        TrajectorySequence trajectory2 = drive.trajectorySequenceBuilder(trajectory1.end())
+                .splineToConstantHeading(new Vector2d(0, 30), Math.toRadians(180))
+                .splineToConstantHeading(new Vector2d(-20, 40), Math.toRadians(180))
+                .splineToSplineHeading(new Pose2d(-29, 36, Math.toRadians(-150)), Math.toRadians(180))
+                .build();
 
-        // Third trajectory
-        // We have to define a new end pose because we can't just call trajectory2.end()
-        // Since there was a point turn before that
-        // So we just take the pose from trajectory2.end(), add the previous turn angle to it
-        Pose2d newLastPose = trajectory2.end().plus(new Pose2d(0, 0, turnAngle1));
-        TrajectorySequence trajectory3 = drive.trajectorySequenceBuilder(trajectory2.end())
-                .splineToConstantHeading(new Vector2d(-35.5, 61), Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(3, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(3, 30), Math.toRadians(-90))
-                .build();
-        Trajectory stop2 = drive.trajectoryBuilder(trajectory3.end())
-                .forward(2)
-                .build();
-        TrajectorySequence trajectory4 = drive.trajectorySequenceBuilder(stop.end())
-                .splineToSplineHeading(new Pose2d(-3.5, 39, Math.toRadians(-90)), Math.toRadians(90))
-                .splineToSplineHeading(new Pose2d(-20, 48, Math.toRadians(90)), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-36.5, 61, Math.toRadians(90)), Math.toRadians(90))
-                .build();
-        TrajectorySequence trajectory5 = drive.trajectorySequenceBuilder(trajectory4.end())
-                .splineToConstantHeading(new Vector2d(-36, 61), Math.toRadians(0))
-                .splineToSplineHeading(new Pose2d(2, 40, Math.toRadians(-90)), Math.toRadians(-90))
-                .splineToConstantHeading(new Vector2d(2, 30), Math.toRadians(-90))
-                .build();
-        Trajectory stop3 = drive.trajectoryBuilder(trajectory5.end())
-                .forward(2)
-                .build();
-        TrajectorySequence trajectory6 = drive.trajectorySequenceBuilder(stop3.end())
-                .splineToConstantHeading(new Vector2d(5, 31), Math.toRadians(90))
-                .splineToConstantHeading(new Vector2d(-24, 45), Math.toRadians(0))
-                .splineToConstantHeading(new Vector2d(-45, 17), Math.toRadians(-110))
-                .splineToLinearHeading(new Pose2d(-25, 10, Math.toRadians(180)), Math.toRadians(0))
-                .build();
+
         // Define a 1.5 second wait time
         double waitTime1 = 1.5;
+        double lasttraj = 0;
+        double lastjust = 0;
         ElapsedTime waitTimer1 = new ElapsedTime();
 
         // Define the angle for turn 2
         double turnAngle2 = Math.toRadians(720);
         boolean ready = false;
+        while(!opModeIsActive()){
+            arm();
+        }
         waitForStart();
 
-        if (isStopRequested()) return;
+
 
         // Set the current state to TRAJECTORY_1, our first step
         // Then have it follow that trajectory
@@ -223,17 +200,16 @@ public class JustParkAuto extends LinearOpMode {
                     // Once `isBusy() == false`, the trajectory follower signals that it is finished
                     // We move on to the next state
                     // Make sure we use the async follow function
-                    if(limitfront.isPressed()){
+                    if (limitfront.isPressed() || limitfront2.isPressed()) {
                         front = 1;
                     }
-                    if(front == 1){
-                        armtarget = 1076;
+                    if (front == 1) {
+                        armtarget = 1000;
                         gripspinny.setPower(-1);
-                        drive.followTrajectoryAsync(stop);
-                        if(armPose - armtarget < 200) {
+                        if (armPose - armtarget < 200) {
                             ready = true;
                         }
-                    }else{
+                    } else {
                         armtarget = (int) armspecimen;
                         slidestarget = (int) (slidespecimen * slideticks * 2);
                         wristpose = wristspecimen;
@@ -248,146 +224,23 @@ public class JustParkAuto extends LinearOpMode {
                         gripspinny.setPower(1);
                     }
                     break;
+
                 case TRAJECTORY_2:
-                    // Check if the drive class is busy following the trajectory
-                    // Move on to the next state, TURN_1, once finished
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && drivetime.time(TimeUnit.MILLISECONDS) < 1000){
-                        armtarget = (int) armspecimenpickup;
-                        wristpose = wristspecimenpickup;
-                        twistpose = .5;
-                        gripspinny.setPower(-1);
-                    }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && (!limitwrist1.getState() || !limitwrist2.getState())) {
-                        //raise arm to take off hook and bring arm in
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                        r1press = 2;
-                        ready = true;
-                    }
-                    if (!drive.isBusy() && ready) {
-                        offset += 2.5;
-                        ready = false;
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_3;
-                        drive.followTrajectorySequenceAsync(trajectory3);
-                        drivetime = new ElapsedTime();
-                    }
-                    break;
-                case TRAJECTORY_3:
-                    // Check if the drive class isn't busy
-                    // `isBusy() == true` while it's following the trajectory
-                    // Once `isBusy() == false`, the trajectory follower signals that it is finished
-                    // We move on to the next state
-                    // Make sure we use the async follow function
-                    if(!drive.isBusy() && !limitfront.isPressed()){
-                        drive.followTrajectoryAsync(stop2);
-                    }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && limitfront.isPressed() && front == 0){
-                        front = 1;
-                        drivetime = new ElapsedTime();
-                    }
-                    if(front == 1 && drivetime.time(TimeUnit.MILLISECONDS) > 200){
-                        armtarget = 1076;
-                        gripspinny.setPower(-1);
-                        if(armPose - armtarget < 100) {
-                            ready = true;
+                    if (just == 0) {
+                        if (drivetime.time(TimeUnit.MILLISECONDS) > 800) {
+                            inta = 2;
+                            slidestarget = (int) (1.987235 * slideticks * 2);
+                            wristpose = .186668;
+                            twistpose = 0;
+                            gripspinny.setPower(-1);
                         }
-                    }else{
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                    }
-                    if (ready) {
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_4;
-                        drive.followTrajectorySequenceAsync(trajectory4);
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        gripspinny.setPower(1);
-                    }
-                    break;
-                case TRAJECTORY_4:
-                    // Check if the drive class is busy following the trajectory
-                    // Move on to the next state, TURN_1, once finished
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 500 && drivetime.time(TimeUnit.MILLISECONDS) < 1000){
-                        armtarget = (int) armspecimenpickup;
-                        wristpose = wristspecimenpickup;
-                        twistpose = .5;
-                        gripspinny.setPower(-1);
-                    }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && (!limitwrist1.getState() || !limitwrist2.getState())) {
-                        //raise arm to take off hook and bring arm in
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                        r1press = 2;
-                        ready = true;
-                    }
-                    if (ready) {
-                        offset += 2.5;
-                        ready = false;
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_5;
-                        drive.followTrajectorySequenceAsync(trajectory5);
-                        drivetime = new ElapsedTime();
-                    }
-                    break;
-                case TRAJECTORY_5:
-                    // Check if the drive class isn't busy
-                    // `isBusy() == true` while it's following the trajectory
-                    // Once `isBusy() == false`, the trajectory follower signals that it is finished
-                    // We move on to the next state
-                    // Make sure we use the async follow function
-                    if(!drive.isBusy() && !limitfront.isPressed()){
-                        drive.followTrajectoryAsync(stop3);
-                    }
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 1000 && limitfront.isPressed() && front == 0){
-                        front = 1;
-                        drivetime = new ElapsedTime();
-                    }
-                    if(front == 1 && drivetime.time(TimeUnit.MILLISECONDS) > 200){
-                        armtarget = 1076;
-                        gripspinny.setPower(-1);
-                        if(armPose - armtarget < 100) {
-                            ready = true;
+                        if (!drive.isBusy()) {
+                            currentState = AsyncFollowingFSM.State.IDLE;
+                            just = 1;
                         }
-                    }else{
-                        armtarget = (int) armspecimen;
-                        slidestarget = (int) (slidespecimen * slideticks * 2);
-                        wristpose = wristspecimen;
-                        twistpose = twistspecimen;
-                    }
-                    if (ready) {
-                        currentState = AsyncFollowingFSM.State.TRAJECTORY_6;
-                        drive.followTrajectorySequenceAsync(trajectory6);
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        gripspinny.setPower(1);
-                    }
-                    break;
-                case TRAJECTORY_6:
-                    if(drivetime.time(TimeUnit.MILLISECONDS) > 400){
-                        armtarget = 0;
-                        wristpose = 0;
-                        twistpose = .5;
-                        gripspinny.setPower(0);
-                    }
-                    if (!drive.isBusy()) {
-                        currentState = AsyncFollowingFSM.State.IDLE;
-                        idle();
-                        drivetime = new ElapsedTime();
-                        ready = false;
-                        front = 0;
-                        gripspinny.setPower(0);
                     }
                     break;
                 case IDLE:
-                    // Do nothing in IDLE
-                    // currentState does not change once in IDLE
-                    // This concludes the autonomous program
                     break;
             }
 
@@ -410,6 +263,7 @@ public class JustParkAuto extends LinearOpMode {
             telemetry.addData("state", currentState);
             telemetry.addData("ready", ready);
             telemetry.addData("doing stuff", drive.isBusy());
+            telemetry.addData("just", just);
             telemetry.update();
         }
     }
@@ -450,7 +304,7 @@ public class JustParkAuto extends LinearOpMode {
         slides = hardwareMap.get(DcMotor.class, "slides"); //0 to -3.5 limit
         Arm1 = hardwareMap.get(DcMotor.class, "Arm1");
         Arm2 = hardwareMap.get(DcMotor.class, "Arm2");
-        ArmPos = hardwareMap.get(DcMotor.class, "ArmPos");
+        ArmPos = hardwareMap.get(AnalogInput.class, "ArmPos");
         gripspinny = hardwareMap.get(CRServo.class, "gripspinny");
         wristy = hardwareMap.get(Servo.class, "wrist");
         twisty = hardwareMap.get(Servo.class, "twist");
@@ -459,18 +313,16 @@ public class JustParkAuto extends LinearOpMode {
         front_right = hardwareMap.get(DcMotor.class, "front_right");
         rear_left = hardwareMap.get(DcMotor.class, "rear_left");
         rear_right = hardwareMap.get(DcMotor.class, "rear_right");
-        limitarm = hardwareMap.get(DigitalChannel.class, "limitarm");
         limitwrist1 = hardwareMap.get(DigitalChannel.class, "limitwrist1");
         limitwrist2 = hardwareMap.get(DigitalChannel.class, "limitwrist2");
+        limitwrist3 = hardwareMap.get(DigitalChannel.class, "limitwrist3");
         limitfront = hardwareMap.get(RevTouchSensor.class, "limitfront");
-        wristy.setPosition(0);
-        twisty.setPosition(.5);
+        limitfront2 = hardwareMap.get(RevTouchSensor.class, "limitfront2");
         gripspinny.setPower(0);
         slides.setDirection(DcMotor.Direction.REVERSE);
         slides.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         slides.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         Arm1 .setDirection(DcMotor.Direction.REVERSE);
-        ArmPos.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         Arm1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         Arm2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         gripspinny.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -483,7 +335,7 @@ public class JustParkAuto extends LinearOpMode {
         front_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rear_left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rear_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        armtarget = 0;
+        armtarget = (int) (14.5 * armticks);
         slidestarget = 0;
     }
     public void arm(){
@@ -511,28 +363,29 @@ public class JustParkAuto extends LinearOpMode {
             slides.setPower(-power);
         }
         armcontroller.setPID(armp, armi, armd);
-        armPose = ArmPos.getCurrentPosition();
+        armPose = (1 - ArmPos.getVoltage() - .2) / ticks * armticks;
         double armpid = controller.calculate(armPose, armtarget);
         double armff = Math.cos(Math.toRadians(armtarget)) * armf;
         double armpower = armpid + armff;
         if(-200 < armPose - armtarget && armPose - armtarget < 200 && (gamepad2.left_stick_y > .1 || gamepad2.left_stick_y < -.1)){
             Arm1.setPower(gamepad2.left_stick_y/2);
             Arm2.setPower(gamepad2.left_stick_y/2);
-            armtarget = (int) (ArmPos.getCurrentPosition());
+            armtarget = (int) (armPose);
         }else {
             Arm1.setPower(-armpower);
             Arm2.setPower(-armpower);
         }
-
-        wristy.setPosition(wristpose);
-        twisty.setPosition(twistpose);
+        if(opModeIsActive()) {
+            wristy.setPosition(wristpose);
+            twisty.setPosition(twistpose);
+        }
 
     }
     public void extra_in(){
         if(r1press == 2){
             runtime = new ElapsedTime();
             r1press = 3;
-        }else if(r1press == 3 && runtime.time(TimeUnit.MILLISECONDS) < 500){
+        }else if(r1press == 3 && runtime.time(TimeUnit.MILLISECONDS) < 100){
             gripspinny.setPower(-1);
         }else if(r1press == 3){
             gripspinny.setPower(0);
@@ -567,6 +420,12 @@ public class JustParkAuto extends LinearOpMode {
         }else if(apress == 3){
             gripspinny.setPower(0);
             apress = 1;
+        }
+    }
+    public void intake(){
+        if(abs(slidesPose - slidestarget) < 100 && inta == 2){
+            armtarget = -250;
+            inta = 1;
         }
     }
 }   // end class
